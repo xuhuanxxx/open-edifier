@@ -1,0 +1,15 @@
+[package]
+name = "open-edifier-aaec"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "AA EC/BB EC binary framing used by supported EDIFIER speakers"
+documentation = "https://docs.rs/open-edifier-aaec"
+
+[dependencies]
+thiserror.workspace = true

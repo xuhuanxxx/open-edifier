@@ -1,0 +1,21 @@
+[package]
+name = "open-edifier-swift-bridge"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Minimal C ABI bridge from Apple platform applications to OpenEdifier"
+documentation = "https://docs.rs/open-edifier"
+publish = false
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+open-edifier = { version = "0.1.0-alpha.1", path = "../../../crates/open-edifier" }
+serde.workspace = true
+serde_json.workspace = true

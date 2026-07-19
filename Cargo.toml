@@ -1,0 +1,28 @@
+[workspace]
+members = [
+  "bindings/swift/native",
+  "crates/open-edifier",
+  "crates/open-edifier-aaec",
+  "crates/open-edifier-cli",
+  "crates/open-edifier-core",
+  "crates/open-edifier-discovery",
+  "crates/open-edifier-s260",
+]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0-alpha.1"
+edition = "2024"
+license = "MIT"
+rust-version = "1.85"
+authors = ["OpenEdifier contributors"]
+readme = "README.md"
+keywords = ["edifier", "speaker", "audio", "local-control"]
+categories = ["hardware-support", "multimedia::audio", "command-line-utilities"]
+
+[workspace.dependencies]
+clap = { version = "4.5", features = ["derive", "env"] }
+mdns-sd = { version = "0.20.2", default-features = false }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0"

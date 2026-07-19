@@ -1,0 +1,9 @@
+/target/
+/.DS_Store
+*.xcuserstate
+DerivedData/
+.build/
+apps/macos/dist/
+__pycache__/
+*.pyc
+.venv/

@@ -37,4 +37,4 @@ apps/macos/package.sh
 
 当前 App 没有 Developer ID，也没有经过 Apple 公证。确认仓库来源和 checksum 后，首次尝试打开，再前往“系统设置 → 隐私与安全性”选择“仍要打开”。不要全局关闭 Gatekeeper。
 
-公开 alpha 前仍需完成非开发用户环境安装验证。Developer ID、公证、Universal Binary 和更低 macOS 部署目标只由真实需求触发，不作为首发阻塞项。
+首个公开 alpha 已在带 quarantine 的非开发用户环境完成单 App“仍要打开”与启动验证。Developer ID、公证、Universal Binary 和更低 macOS 部署目标只由真实需求触发，不作为首发阻塞项。

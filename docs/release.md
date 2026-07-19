@@ -45,7 +45,7 @@ apps/macos/dist/OpenEdifier-<version>-macos-arm64.dmg.sha256
 
 脚本会重新构建 App、生成 `.icns`、注入版本、执行 ad-hoc 签名、创建带 `/Applications` 快捷方式的 DMG，并回读 SHA-256。
 
-发布前还要在非开发用户环境挂载 DMG、拖入 `/Applications`，并验证 Apple 提供的单 App“仍要打开”流程。未认证风险必须保留在 release notes 中。
+发布前还要在非开发用户环境挂载 DMG、拖入 `/Applications`，并验证 Apple 提供的单 App“仍要打开”流程。未认证风险必须保留在 release notes 中。`v0.1.0-alpha.1` 已完成该人工验收。
 
 ## Homebrew tap
 

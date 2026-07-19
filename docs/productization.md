@@ -57,7 +57,7 @@ Rust workspace、CLI、macOS App、文档、测试和研究记录共同组成这
 | Homebrew tap | 已完成 | public `xuhuanxxx/homebrew-tap` 使用真实 tag URL/SHA-256；style、strict online audit、直接安装、test、version/help、upgrade 幂等检查和卸载均通过 |
 | 发布候选实机验收 | 已完成 | S260 完成状态、最小音量/EQ 写入恢复、当前输入源、播放 ACK 和实时事件验证，最终状态已记录 |
 | DMG 结构验收 | 已完成 | 从公开 Release 匿名下载后，checksum、image CRC、挂载、App、`/Applications` 快捷方式、bundle 签名和版本均已回读验证 |
-| 干净环境安装 | 部分完成 | 匿名 public clone、README 源码安装、Homebrew 一行安装/test/upgrade/uninstall 已通过；仍需带 quarantine 的非开发 macOS 用户环境验证 |
+| 干净环境安装 | 已完成 | 匿名 public clone、README 源码安装、Homebrew 一行安装/test/upgrade/uninstall 已通过；带 quarantine 的非开发 macOS 用户已按单 App“仍要打开”流程确认 App 可启动 |
 
 ## 产品化原则
 

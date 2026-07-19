@@ -46,14 +46,14 @@ Rust workspace、CLI、macOS App、文档、测试和研究记录共同组成这
 |---|---|---|
 | 核心能力 | 已完成 | S260 驱动、发现、CLI、SwiftUI App、mock 和架构文档均在仓库内 |
 | 多型号基础 | 已完成代码重构 | core 无型号常量，状态能力可选且结构化，facade 集中注册驱动，CLI/C ABI 无型号分支，macOS 按能力渲染；仍只有 S260 经过实机验证 |
-| Git 基线 | 已完成 | `main` 已建立初始 commit，并推送到个人 private GitHub 仓库 |
-| 敏感信息与历史审计 | 当前已通过 | 已检查当前完整 Git 历史中的路径、地址、凭据特征、专有扩展名和大 blob，ignored 内容只有构建产物；转 public 前仍须对最终增量复跑 |
+| Git 基线 | 已完成 | `main` 已推送到个人 public GitHub 仓库，匿名 clone 已回读验证 |
+| 敏感信息与历史审计 | 已通过公开门 | 转 public 前已检查完整 Git 历史中的路径、地址、凭据特征、专有扩展名和大 blob，ignored 内容只有构建产物；后续 release 继续检查增量 |
 | 最小公开文件 | 已完成 | README、LICENSE、CONTRIBUTING、SECURITY、CHANGELOG 和 `.gitignore` 已存在 |
 | Rust CI | 已完成并通过 | Linux、macOS、Windows 测试，fmt、clippy、doc 和 Rust 1.85 MSRV 已在 GitHub Actions 通过 |
 | CLI 版本 | 已完成 | `edifier --version` 从 Cargo package version 输出完整版本 |
 | macOS 发布工程 | 已完成并通过 | 版本注入、原创图标、ad-hoc 签名、DMG 和 checksum 已落地，本地与 GitHub Actions 构建均通过 |
 | tag 到 GitHub prerelease | 两阶段流程已完成，尚未触发 | tag 推送只做候选验收；Homebrew 线上验证通过后人工触发同一 workflow 创建 prerelease；当前没有 tag |
-| GitHub public | 未完成 | 当前仓库保持 private，改为 public 需要明确授权 |
+| GitHub public | 已完成 | 仓库可见性和匿名 API/clone 已回读，私密漏洞报告入口已启用 |
 | Homebrew tap | 配方本地预验完成，远端未创建 | 使用当前干净 commit 的源码归档和临时本地 tap，已通过 style、源码安装、test、version/help 和卸载；public tag URL、SHA-256、online audit 与升级仍需在仓库 public 后验证 |
 | 发布候选实机验收 | 已完成 | S260 完成状态、最小音量/EQ 写入恢复、当前输入源、播放 ACK 和实时事件验证，最终状态已记录 |
 | DMG 结构验收 | 已完成 | image checksum、挂载、App、`/Applications` 快捷方式和 bundle 签名已回读验证 |
@@ -75,7 +75,7 @@ Rust workspace、CLI、macOS App、文档、测试和研究记录共同组成这
 
 ### 公开前审计
 
-仓库当前只有 private 历史。转为 public 前必须重新检查所有文件；如果发现敏感内容，必须在改变可见性前清理 private 历史：
+首次转为 public 前必须重新检查所有文件；如果发现敏感内容，必须在改变可见性前清理 private 历史。后续 release 对最终增量复查：
 
 ```bash
 rg -n '/Users/|/home/|[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}' . \
@@ -94,7 +94,7 @@ rg --files | rg '\.(apk|dex|pcap|pcapng|bin|firmware|mobileprovision|p12)$'
 - 不存在 APK、DEX、固件、原始抓包、厂商手册或解包库；
 - README 的商标声明、支持边界和第三方研究致谢准确。
 
-审计通过后再创建初始 commit，避免敏感内容进入公开 Git 历史。
+首次公开前已经完成工作区和完整 Git 历史审计，并在切换可见性后通过匿名 API 与 clone 回读。后续提交仍须遵守相同隐私边界，不能把一次审计当作永久豁免。
 
 ### 最小公开文件
 

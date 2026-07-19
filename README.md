@@ -109,7 +109,7 @@ apps/macos/package.sh
 
 ## 路线图
 
-- 按[产品化路线](docs/productization.md)完成公开前审计、GitHub public、社区治理和统一发布流程
+- 按[产品化路线](docs/productization.md)维护公开审计、可追踪发布和最小社区治理
 - 通过项目 Homebrew tap 发布 CLI，稳定后再评估 `homebrew-core`
 - 将 ad-hoc 签名的 macOS App 通过 GitHub Release 分发；Developer ID 和 Apple 公证作为可选升级
 - 支持 App Intents 的原生 iOS 应用

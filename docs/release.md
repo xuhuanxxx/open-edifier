@@ -1,6 +1,6 @@
 # 发布操作说明
 
-OpenEdifier 的 release 必须对应一个已经通过质量门的干净 commit。当前仓库保持 private；在明确决定转为 public 前，不创建公开 Homebrew tap，也不创建首个 release tag。
+OpenEdifier 的 release 必须对应一个已经通过质量门的干净 commit。主仓库公开后，先用 tag 固定发布候选并完成 Homebrew 线上验证，再人工触发 GitHub prerelease；不能让 tag 推送直接发布未经安装验收的产物。
 
 ## 版本来源
 
@@ -28,7 +28,7 @@ cargo run --locked --quiet -p open-edifier-cli -- --version
 还必须：
 
 1. 从全新 clone 重复 README 的源码安装步骤；
-2. 完成 Homebrew formula 的 style、audit、install、test 和 uninstall；
+2. tag 推送后的候选 workflow 通过，再完成 Homebrew formula 的 style、audit、install、test 和 uninstall；
 3. 按实机规则验证 S260 并恢复原状态；
 4. 更新 `CHANGELOG.md` 和对应版本的 release notes；
 5. 确认 release notes 中的实机记录对应当前发布候选，并包含设备最终状态；
@@ -63,7 +63,7 @@ edifier --help
 brew uninstall open-edifier
 ```
 
-Homebrew 验证没有完成前，不创建 release tag，避免 GitHub Release 已发布但 README 中的安装命令不可用。
+正式 formula 验证需要公开 tag tarball，因此 tag 是候选源码锚点。Homebrew 验证没有完成前，不人工触发 GitHub prerelease，避免 Release 已发布但 README 中的安装命令不可用。
 
 ## 创建 release
 
@@ -74,6 +74,12 @@ git tag -a v0.1.0-alpha.1 -m "OpenEdifier 0.1.0-alpha.1"
 git push origin v0.1.0-alpha.1
 ```
 
-tag 会触发 `.github/workflows/release.yml`。workflow 会再次验证版本、release notes、Rust 质量门和 macOS 打包，随后创建 GitHub prerelease。不要从未提交的本地 `dist/` 手工上传产物。
+tag 会触发 `.github/workflows/release.yml`，再次验证版本、release notes、Rust 质量门和 macOS 打包，但不会立刻创建 Release。候选 workflow 和 Homebrew 线上验收都通过后，再执行：
+
+```bash
+gh workflow run release.yml --ref v0.1.0-alpha.1 -f tag=v0.1.0-alpha.1
+```
+
+人工触发的 workflow 会重新从该 tag 构建，并创建 GitHub prerelease。不要从未提交的本地 `dist/` 手工上传产物。
 
 如果候选失败，修复后使用新的预发布版本；不要移动已经公开使用的 tag，也不要覆盖既有 release 产物。

@@ -52,7 +52,7 @@ Rust workspace、CLI、macOS App、文档、测试和研究记录共同组成这
 | Rust CI | 已完成并通过 | Linux、macOS、Windows 测试，fmt、clippy、doc 和 Rust 1.85 MSRV 已在 GitHub Actions 通过 |
 | CLI 版本 | 已完成 | `edifier --version` 从 Cargo package version 输出完整版本 |
 | macOS 发布工程 | 已完成并通过 | 版本注入、原创图标、ad-hoc 签名、DMG 和 checksum 已落地，本地与 GitHub Actions 构建均通过 |
-| tag 到 GitHub prerelease | 本地已完成流程，尚未触发 | workflow 会校验 tag、release notes、质量门和 macOS 产物；当前没有 tag |
+| tag 到 GitHub prerelease | 两阶段流程已完成，尚未触发 | tag 推送只做候选验收；Homebrew 线上验证通过后人工触发同一 workflow 创建 prerelease；当前没有 tag |
 | GitHub public | 未完成 | 当前仓库保持 private，改为 public 需要明确授权 |
 | Homebrew tap | 配方本地预验完成，远端未创建 | 使用当前干净 commit 的源码归档和临时本地 tap，已通过 style、源码安装、test、version/help 和卸载；public tag URL、SHA-256、online audit 与升级仍需在仓库 public 后验证 |
 | 发布候选实机验收 | 已完成 | S260 完成状态、最小音量/EQ 写入恢复、当前输入源、播放 ACK 和实时事件验证，最终状态已记录 |
@@ -203,8 +203,9 @@ apps/macos/package.sh
 
 - 首个公开 tag 使用 `v0.1.0-alpha.1`；
 - workspace version、`edifier --version`、App version、DMG 文件名和 Release notes 必须对应；
-- 所有产物从通过 CI 的 tag 构建，不从未提交工作区上传；
+- 所有产物从通过候选 CI 和 Homebrew 验收的 tag 构建，不从未提交工作区上传；
 - alpha 和 beta 使用 GitHub prerelease 标记；
+- tag 推送只验证候选，不直接发布；Homebrew 线上验收通过后，人工触发同一 workflow 创建 prerelease；
 - GitHub Release 附带 Homebrew 安装命令、DMG、checksum、支持边界、已知问题和实际测试结果；
 - CI 未执行的 Homebrew、安装、公证或实机场景不得描述为已经通过。
 

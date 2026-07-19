@@ -4,21 +4,33 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "已经通过候选验收并完成 Homebrew 验证的 tag"
+        required: true
+        type: string
 
 permissions:
   contents: write
+
+env:
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
 
 jobs:
   github-release:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.RELEASE_TAG }}
       - uses: dtolnay/rust-toolchain@stable
       - name: Validate tag and release notes
         shell: bash
         run: |
           version=$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml)
-          test "$GITHUB_REF_NAME" = "v$version"
+          test "$RELEASE_TAG" = "v$version"
+          git tag --points-at HEAD | grep -Fxq "$RELEASE_TAG"
           test -f "docs/release-notes/$version.md"
           ! grep -q "尚未执行当前 tag 的发布前实机验收" "docs/release-notes/$version.md"
       - name: Run release quality gates
@@ -34,12 +46,13 @@ jobs:
         env:
           OPEN_EDIFIER_BUILD_NUMBER: ${{ github.run_number }}
       - name: Create GitHub prerelease
+        if: github.event_name == 'workflow_dispatch'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          version=${GITHUB_REF_NAME#v}
-          gh release create "$GITHUB_REF_NAME" \
+          version=${RELEASE_TAG#v}
+          gh release create "$RELEASE_TAG" \
             --verify-tag \
             --prerelease \
             --title "OpenEdifier $version" \

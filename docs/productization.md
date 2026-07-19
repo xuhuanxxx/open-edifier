@@ -47,7 +47,7 @@ Rust workspace、CLI、macOS App、文档、测试和研究记录共同组成这
 | 核心能力 | 已完成 | S260 驱动、发现、CLI、SwiftUI App、mock 和架构文档均在仓库内 |
 | 多型号基础 | 已完成代码重构 | core 无型号常量，状态能力可选且结构化，facade 集中注册驱动，CLI/C ABI 无型号分支，macOS 按能力渲染；仍只有 S260 经过实机验证 |
 | Git 基线 | 已完成 | `main` 已建立初始 commit，并推送到个人 private GitHub 仓库 |
-| 首轮敏感信息审计 | 已完成 | private 推送前已检查路径、地址、凭据、专有格式、ignored 文件和大文件；转 public 前必须复跑 |
+| 敏感信息与历史审计 | 当前已通过 | 已检查当前完整 Git 历史中的路径、地址、凭据特征、专有扩展名和大 blob，ignored 内容只有构建产物；转 public 前仍须对最终增量复跑 |
 | 最小公开文件 | 已完成 | README、LICENSE、CONTRIBUTING、SECURITY、CHANGELOG 和 `.gitignore` 已存在 |
 | Rust CI | 已完成并通过 | Linux、macOS、Windows 测试，fmt、clippy、doc 和 Rust 1.85 MSRV 已在 GitHub Actions 通过 |
 | CLI 版本 | 已完成 | `edifier --version` 从 Cargo package version 输出完整版本 |

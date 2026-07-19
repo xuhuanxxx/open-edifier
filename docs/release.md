@@ -30,7 +30,7 @@ cargo run --locked --quiet -p open-edifier-cli -- --version
 1. 从全新 clone 重复 README 的源码安装步骤；
 2. tag 推送后的候选 workflow 通过，再完成 Homebrew formula 的 style、audit、install、test 和 uninstall；
 3. 按实机规则验证 S260 并恢复原状态；
-4. 更新 `CHANGELOG.md` 和对应版本的 release notes；
+4. 更新 `CHANGELOG.md` 和对应版本的 release notes，并在 tag 前将版本标题中的“尚未发布”替换为实际发布日期；
 5. 确认 release notes 中的实机记录对应当前发布候选，并包含设备最终状态；
 6. 确认 `main` 与 `origin/main` 一致且工作区干净。
 

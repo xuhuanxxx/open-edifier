@@ -52,12 +52,12 @@ Rust workspace、CLI、macOS App、文档、测试和研究记录共同组成这
 | Rust CI | 已完成并通过 | Linux、macOS、Windows 测试，fmt、clippy、doc 和 Rust 1.85 MSRV 已在 GitHub Actions 通过 |
 | CLI 版本 | 已完成 | `edifier --version` 从 Cargo package version 输出完整版本 |
 | macOS 发布工程 | 已完成并通过 | 版本注入、原创图标、ad-hoc 签名、DMG 和 checksum 已落地，本地与 GitHub Actions 构建均通过 |
-| tag 到 GitHub prerelease | 两阶段流程已完成，尚未触发 | tag 推送只做候选验收；Homebrew 线上验证通过后人工触发同一 workflow 创建 prerelease；当前没有 tag |
+| tag 到 GitHub prerelease | 已完成 | `v0.1.0-alpha.1` 固定到通过 CI 的 commit；候选和人工发布 workflow 均通过，远端 DMG/checksum 已匿名下载并回读验证 |
 | GitHub public | 已完成 | 仓库可见性和匿名 API/clone 已回读，私密漏洞报告入口已启用 |
-| Homebrew tap | 配方本地预验完成，远端未创建 | 使用当前干净 commit 的源码归档和临时本地 tap，已通过 style、源码安装、test、version/help 和卸载；public tag URL、SHA-256、online audit 与升级仍需在仓库 public 后验证 |
+| Homebrew tap | 已完成 | public `xuhuanxxx/homebrew-tap` 使用真实 tag URL/SHA-256；style、strict online audit、直接安装、test、version/help、upgrade 幂等检查和卸载均通过 |
 | 发布候选实机验收 | 已完成 | S260 完成状态、最小音量/EQ 写入恢复、当前输入源、播放 ACK 和实时事件验证，最终状态已记录 |
-| DMG 结构验收 | 已完成 | image checksum、挂载、App、`/Applications` 快捷方式和 bundle 签名已回读验证 |
-| 干净环境安装 | 部分完成 | 全新 private clone 的 CLI 源码安装，以及临时本地 tap 的 Homebrew 安装、测试和卸载已通过；仍需 public tap、升级和带 quarantine 的非开发 macOS 用户环境验证 |
+| DMG 结构验收 | 已完成 | 从公开 Release 匿名下载后，checksum、image CRC、挂载、App、`/Applications` 快捷方式、bundle 签名和版本均已回读验证 |
+| 干净环境安装 | 部分完成 | 匿名 public clone、README 源码安装、Homebrew 一行安装/test/upgrade/uninstall 已通过；仍需带 quarantine 的非开发 macOS 用户环境验证 |
 
 ## 产品化原则
 

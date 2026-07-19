@@ -12,6 +12,22 @@ OpenEdifier 目前提供 Rust SDK、CLI 和原生 macOS MVP，可在可信局域
 
 已验证的 S260 输入源包括蓝牙、AUX、USB 和 AirPlay。修改输入源、音量和 EQ 后，SDK 会再次查询状态；只有在设备端观察到目标状态才会报告成功。播放命令由音箱确认接收，但实际效果取决于当前输入源。
 
+## Homebrew 安装
+
+macOS 用户可以通过项目 tap 安装 CLI：
+
+```bash
+brew install xuhuanxxx/tap/open-edifier
+edifier --version
+```
+
+更新或卸载：
+
+```bash
+brew upgrade open-edifier
+brew uninstall open-edifier
+```
+
 ## 从源码安装
 
 需要 Rust 1.85 或更高版本。
@@ -75,7 +91,9 @@ research/                  仅存放脱敏后的原始观察
 
 ## macOS 应用
 
-Apple Silicon、macOS 26 本机构建：
+Apple Silicon 用户可以从 [OpenEdifier 0.1.0-alpha.1 prerelease](https://github.com/xuhuanxxx/open-edifier/releases/tag/v0.1.0-alpha.1) 下载 DMG 和 `.sha256`。校验后将 App 拖入 `/Applications`；该 App 使用 ad-hoc 签名，首次打开方式和风险说明见 [macOS 应用说明](apps/macos/README.md)。
+
+从源码构建需要 macOS 26 和 Xcode 26：
 
 ```bash
 apps/macos/build.sh

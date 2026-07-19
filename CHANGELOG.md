@@ -1,6 +1,6 @@
 # 变更记录
 
-## 0.1.0-alpha.1 - 尚未发布
+## 0.1.0-alpha.1 - 2026-07-20
 
 - 新增与型号无关的核心契约和高层驱动选择。
 - 使用 EDIFIER AirPlay 广播实现跨平台 mDNS 发现。
@@ -27,3 +27,4 @@
 - macOS 应用使用 `WindowGroup` 接入标准系统菜单和窗口管理，并支持设备选择记忆、静默状态同步、控制菜单及键盘快捷键。
 - 新增 CLI 版本输出、macOS bundle 版本注入、原创可复现图标、DMG/checksum 打包和 tag 驱动的 prerelease workflow。
 - 完成多型号最小重构：core 移除 S260 常量，公共状态允许可选能力，新增稳定能力投影和集中式静态驱动注册，macOS 按能力动态显示控制项。
+- 建立 public GitHub 仓库、私密漏洞报告入口、Homebrew tap 和带 DMG/checksum 的首个 GitHub prerelease。

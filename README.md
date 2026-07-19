@@ -23,6 +23,7 @@ cargo install --path crates/open-edifier-cli --locked
 随后无需指定 IP 地址即可发现并控制音箱：
 
 ```bash
+edifier --version
 edifier discover
 edifier status
 edifier source aux
@@ -81,7 +82,13 @@ apps/macos/build.sh
 open apps/macos/dist/OpenEdifier.app
 ```
 
-应用会自动发现音箱，并提供输入源、音量、EQ 和播放控制。当前产物只支持 Apple Silicon 并使用 ad-hoc 签名；公开 alpha 将沿用该签名方式并补充 DMG，Developer ID 和公证不是首发前提。Intel 和更低 macOS 版本支持由真实用户需求触发。详见 [macOS 应用说明](apps/macos/README.md)。
+生成 DMG 和 checksum：
+
+```bash
+apps/macos/package.sh
+```
+
+应用会自动发现音箱，并提供输入源、音量、EQ 和播放控制。当前产物只支持 Apple Silicon 并使用 ad-hoc 签名；Developer ID 和公证不是首发前提。Intel 和更低 macOS 版本支持由真实用户需求触发。详见 [macOS 应用说明](apps/macos/README.md)。
 
 ## Alpha 限制
 
@@ -92,7 +99,7 @@ open apps/macos/dist/OpenEdifier.app
 - `1.0` 之前，公开 Rust API 和 JSON 字段可能调整。
 - 恢复出厂、固件升级、重命名、关机等破坏性命令被有意排除。
 
-进一步阅读：[协议说明](docs/protocol.md)、[架构设计](docs/architecture.md)、[产品化路线](docs/productization.md)、[逆向研究过程](docs/research-journey.md)、[安全政策](SECURITY.md)和[贡献指南](CONTRIBUTING.md)。
+进一步阅读：[协议说明](docs/protocol.md)、[架构设计](docs/architecture.md)、[产品化路线](docs/productization.md)、[发布操作](docs/release.md)、[逆向研究过程](docs/research-journey.md)、[安全政策](SECURITY.md)和[贡献指南](CONTRIBUTING.md)。
 
 ## 项目边界
 

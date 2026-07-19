@@ -5,9 +5,6 @@ use std::{fmt, net::IpAddr, str::FromStr};
 
 use serde::{Deserialize, Serialize};
 
-/// Canonical driver identifier for the EDIFIER S260.
-pub const MODEL_S260: &str = "s260";
-
 /// Stable, string-backed identifier for a speaker model.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
@@ -114,6 +111,21 @@ pub struct Equalizer {
     pub preset_count: u8,
 }
 
+/// Model-independent capabilities reported by a driver.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeviceCapabilities {
+    /// Input sources accepted by [`Device::set_source`].
+    pub sources: Vec<Source>,
+    /// Whether the device supports volume mutations.
+    pub volume: bool,
+    /// Whether the device supports equalizer preset mutations.
+    pub equalizer: bool,
+    /// Whether the device accepts playback commands.
+    pub playback: bool,
+    /// Whether the driver provides a state-event stream.
+    pub events: bool,
+}
+
 /// Playback command accepted by media-capable drivers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -167,16 +179,16 @@ pub struct DeviceStatus {
     pub model: ModelId,
     /// Device firmware version.
     pub firmware: String,
-    /// Current input source.
-    pub source: Source,
-    /// Current volume state.
-    pub volume: Volume,
+    /// Current input source when supported and reported.
+    pub source: Option<Source>,
+    /// Current volume state when supported and reported.
+    pub volume: Option<Volume>,
     /// Equalizer state when supported and reported.
     pub equalizer: Option<Equalizer>,
     /// Playback state when reported by the current source.
     pub playback: Option<PlaybackState>,
-    /// Raw capability names reported by the driver.
-    pub capabilities: Vec<String>,
+    /// Stable capabilities projected by the selected model driver.
+    pub capabilities: DeviceCapabilities,
 }
 
 /// Synchronous control contract implemented by every model driver.
@@ -184,9 +196,13 @@ pub trait Device: Send {
     /// Reads current speaker state.
     fn status(&mut self) -> Result<DeviceStatus>;
     /// Selects an input source and returns verified state.
-    fn set_source(&mut self, source: Source) -> Result<DeviceStatus>;
+    fn set_source(&mut self, _source: Source) -> Result<DeviceStatus> {
+        Err(Error::UnsupportedCapability("source"))
+    }
     /// Sets volume and returns verified state.
-    fn set_volume(&mut self, volume: u8) -> Result<DeviceStatus>;
+    fn set_volume(&mut self, _volume: u8) -> Result<DeviceStatus> {
+        Err(Error::UnsupportedCapability("volume"))
+    }
     /// Selects an equalizer preset and returns verified state.
     fn set_eq_preset(&mut self, _preset: u8) -> Result<DeviceStatus> {
         Err(Error::UnsupportedCapability("equalizer"))
@@ -314,10 +330,46 @@ pub type Result<T> = std::result::Result<T, Error>;
 mod tests {
     use super::*;
 
+    struct StatusOnlyDevice;
+
+    impl Device for StatusOnlyDevice {
+        fn status(&mut self) -> Result<DeviceStatus> {
+            Ok(DeviceStatus {
+                name: "Status only".to_owned(),
+                model: ModelId::new("test"),
+                firmware: "test".to_owned(),
+                source: None,
+                volume: None,
+                equalizer: None,
+                playback: None,
+                capabilities: DeviceCapabilities {
+                    sources: Vec::new(),
+                    volume: false,
+                    equalizer: false,
+                    playback: false,
+                    events: false,
+                },
+            })
+        }
+    }
+
     #[test]
     fn source_aliases_are_canonical() {
         assert_eq!(Source::new("BT").as_str(), Source::BLUETOOTH);
         assert_eq!(Source::new("air-play2").as_str(), Source::AIRPLAY);
         assert_eq!(Source::new("optical").as_str(), "optical");
+    }
+
+    #[test]
+    fn optional_mutations_default_to_unsupported() {
+        let mut device = StatusOnlyDevice;
+        assert!(matches!(
+            device.set_source(Source::new("test")),
+            Err(Error::UnsupportedCapability("source"))
+        ));
+        assert!(matches!(
+            device.set_volume(1),
+            Err(Error::UnsupportedCapability("volume"))
+        ));
     }
 }

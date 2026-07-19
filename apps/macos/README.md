@@ -11,7 +11,8 @@
 - 播放、暂停、上一首和下一首；
 - 修改后读取音箱状态进行确认；
 - 记住上次选择的音箱，并每 5 秒静默同步状态；
-- 支持 `⌘R` 刷新、`⌘1` 至 `⌘4` 切换输入源、`⌘+` 与 `⌘-` 调节音量；
+- 支持 `⌘R` 刷新、控制菜单和 `⌘+`、`⌘-` 调节音量；
+- 输入源、音量、EQ 和播放控件根据驱动公开能力动态显示；
 - 使用 SwiftUI `WindowGroup` 接入标准 macOS 应用菜单和窗口管理；
 - 设备离线和协议错误提示。
 
@@ -26,4 +27,14 @@ open apps/macos/dist/OpenEdifier.app
 
 产物位于 `apps/macos/dist/OpenEdifier.app`，已经进行 ad-hoc 签名。首次启动时，macOS 可能请求本地网络访问权限。
 
-公开 alpha 前仍需补充正式图标、DMG 打包、checksum、未认证应用安装说明和干净环境验证。首发不要求付费 Apple Developer Program；Developer ID 和公证只作为未来可选升级。Universal Binary 和更低 macOS 部署目标同样由真实用户需求触发。
+生成带应用图标、`/Applications` 快捷方式和 SHA-256 的 DMG：
+
+```bash
+apps/macos/package.sh
+```
+
+产物位于 `apps/macos/dist/`，文件名包含完整项目版本和 `arm64` 架构。图标由仓库中的 `GenerateAppIcon.swift` 确定性生成，不依赖外部设计文件。
+
+当前 App 没有 Developer ID，也没有经过 Apple 公证。确认仓库来源和 checksum 后，首次尝试打开，再前往“系统设置 → 隐私与安全性”选择“仍要打开”。不要全局关闭 Gatekeeper。
+
+公开 alpha 前仍需完成非开发用户环境安装验证。Developer ID、公证、Universal Binary 和更低 macOS 部署目标只由真实需求触发，不作为首发阻塞项。

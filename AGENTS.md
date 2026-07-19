@@ -120,7 +120,7 @@ RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked
 cargo package --workspace --allow-dirty --no-verify
 ```
 
-内部 crate 尚未发布到 crates.io 时，package 检查使用 `--no-verify`。发布顺序为 core、AAEC、S260、discovery、facade、CLI。
+Rust crates 当前不发布到 crates.io。package 检查使用 `--no-verify`，只验证 crate 文件边界；只有出现明确的外部 Rust 消费需求并更新产品化路线后，才重新讨论 crate 发布。
 
 仅修改文档时，至少检查：
 

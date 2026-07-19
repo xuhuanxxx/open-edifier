@@ -1,4 +1,3 @@
-import AppKit
 import Foundation
 import SwiftUI
 
@@ -30,15 +29,23 @@ struct EqualizerState: Codable {
     }
 }
 
+struct SpeakerCapabilities: Codable {
+    let sources: [String]
+    let volume: Bool
+    let equalizer: Bool
+    let playback: Bool
+    let events: Bool
+}
+
 struct SpeakerStatus: Codable {
     let name: String
     let model: String
     let firmware: String
-    let source: String
-    let volume: VolumeState
+    let source: String?
+    let volume: VolumeState?
     let equalizer: EqualizerState?
     let playback: String?
-    let capabilities: [String]
+    let capabilities: SpeakerCapabilities
 }
 
 private struct BridgeEnvelope<T: Decodable>: Decodable {
@@ -121,11 +128,11 @@ private struct SourceOption: Identifiable {
 }
 
 private final class SpeakerStore: ObservableObject {
-    static let sources = [
-        SourceOption(id: "bluetooth", title: "蓝牙", symbol: "dot.radiowaves.left.and.right"),
-        SourceOption(id: "aux", title: "AUX", symbol: "cable.connector"),
-        SourceOption(id: "usb", title: "USB", symbol: "cable.connector.horizontal"),
-        SourceOption(id: "airplay", title: "AirPlay", symbol: "airplayaudio"),
+    private static let sourceMetadata: [String: (title: String, symbol: String)] = [
+        "bluetooth": ("蓝牙", "dot.radiowaves.left.and.right"),
+        "aux": ("AUX", "cable.connector"),
+        "usb": ("USB", "cable.connector.horizontal"),
+        "airplay": ("AirPlay", "airplayaudio"),
     ]
 
     @Published private(set) var devices: [SpeakerDevice] = []
@@ -142,6 +149,13 @@ private final class SpeakerStore: ObservableObject {
     private var refreshTimer: Timer?
 
     var canControl: Bool { status != nil && !busy }
+    var canSetSource: Bool { canControl && !availableSources.isEmpty }
+    var canSetVolume: Bool { canControl && status?.capabilities.volume == true }
+    var canPlayback: Bool { canControl && status?.capabilities.playback == true }
+
+    var availableSources: [SourceOption] {
+        status?.capabilities.sources.map(Self.sourceOption) ?? []
+    }
 
     var volumeRange: ClosedRange<Double> {
         guard let volume = status?.volume else { return 0...100 }
@@ -295,8 +309,11 @@ private final class SpeakerStore: ObservableObject {
 
     private func apply(_ status: SpeakerStatus) {
         self.status = status
-        volumeLevel = Double(status.volume.current)
-        connectionText = "仅通过本地网络连接  ·  \(sourceName(status.source))"
+        if let volume = status.volume {
+            volumeLevel = Double(volume.current)
+        }
+        let source = status.source.map(sourceName) ?? "未报告输入源"
+        connectionText = "仅通过本地网络连接  ·  \(source)"
         errorMessage = nil
         busy = false
     }
@@ -308,7 +325,16 @@ private final class SpeakerStore: ObservableObject {
     }
 
     private func sourceName(_ source: String) -> String {
-        Self.sources.first(where: { $0.id == source })?.title ?? source
+        Self.sourceOption(source).title
+    }
+
+    private static func sourceOption(_ source: String) -> SourceOption {
+        let metadata = sourceMetadata[source]
+        return SourceOption(
+            id: source,
+            title: metadata?.title ?? source,
+            symbol: metadata?.symbol ?? "cable.connector"
+        )
     }
 }
 
@@ -321,7 +347,9 @@ private struct ContentView: View {
             sourceCard
             HStack(spacing: 14) {
                 volumeCard
-                playbackCard
+                if store.status?.capabilities.playback == true {
+                    playbackCard
+                }
             }
             equalizerCard
             footer
@@ -375,49 +403,61 @@ private struct ContentView: View {
 
     private var sourceCard: some View {
         GroupBox("输入源") {
-            Picker("输入源", selection: Binding(
-                get: { store.status?.source ?? "" },
-                set: store.selectSource
-            )) {
-                ForEach(SpeakerStore.sources) { source in
-                    Label(source.title, systemImage: source.symbol).tag(source.id)
+            if !store.availableSources.isEmpty, store.status?.source != nil {
+                Picker("输入源", selection: Binding(
+                    get: { store.status?.source ?? "" },
+                    set: store.selectSource
+                )) {
+                    ForEach(store.availableSources) { source in
+                        Label(source.title, systemImage: source.symbol).tag(source.id)
+                    }
                 }
+                .labelsHidden()
+                .pickerStyle(.segmented)
+                .disabled(!store.canSetSource)
+            } else {
+                Text("当前设备没有报告可切换的输入源")
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .labelsHidden()
-            .pickerStyle(.segmented)
-            .disabled(!store.canControl)
         }
     }
 
     private var volumeCard: some View {
         GroupBox("音量") {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text(String(Int(store.volumeLevel.rounded())))
-                        .font(.system(size: 44, weight: .semibold, design: .monospaced))
-                    Text("%")
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
-                    Spacer()
+            if store.status?.volume != nil {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text(String(Int(store.volumeLevel.rounded())))
+                            .font(.system(size: 44, weight: .semibold, design: .monospaced))
+                        Text("%")
+                            .font(.title3)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                    }
+                    HStack(spacing: 9) {
+                        Image(systemName: "speaker.fill")
+                            .foregroundStyle(.secondary)
+                        Slider(
+                            value: $store.volumeLevel,
+                            in: store.volumeRange,
+                            step: 1,
+                            onEditingChanged: { editing in
+                                if !editing { store.commitVolume() }
+                            }
+                        )
+                        .accessibilityLabel("音量")
+                        .disabled(!store.canSetVolume)
+                        Image(systemName: "speaker.wave.3.fill")
+                            .foregroundStyle(.secondary)
+                    }
                 }
-                HStack(spacing: 9) {
-                    Image(systemName: "speaker.fill")
-                        .foregroundStyle(.secondary)
-                    Slider(
-                        value: $store.volumeLevel,
-                        in: store.volumeRange,
-                        step: 1,
-                        onEditingChanged: { editing in
-                            if !editing { store.commitVolume() }
-                        }
-                    )
-                    .accessibilityLabel("音量")
-                    .disabled(!store.canControl)
-                    Image(systemName: "speaker.wave.3.fill")
-                        .foregroundStyle(.secondary)
-                }
+                .frame(maxWidth: .infinity, minHeight: 112)
+            } else {
+                Text("当前设备没有报告音量控制")
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, minHeight: 112, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, minHeight: 112)
         }
     }
 
@@ -445,7 +485,7 @@ private struct ContentView: View {
                     }
                 }
                 .buttonStyle(.bordered)
-                .disabled(!store.canControl)
+                .disabled(!store.canPlayback)
             }
             .frame(maxWidth: .infinity, minHeight: 112)
         }
@@ -508,15 +548,8 @@ private struct ContentView: View {
     }
 }
 
-private final class AppDelegate: NSObject, NSApplicationDelegate {
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        NSApp.applicationIconImage = applicationIcon()
-    }
-}
-
 @main
 private struct OpenEdifierApplication: App {
-    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var store = SpeakerStore()
 
     var body: some Scene {
@@ -530,49 +563,18 @@ private struct OpenEdifierApplication: App {
                     .keyboardShortcut("r", modifiers: .command)
                     .disabled(store.busy)
                 Divider()
-                Button("蓝牙") { store.selectSource("bluetooth") }
-                    .keyboardShortcut("1", modifiers: .command)
-                    .disabled(!store.canControl)
-                Button("AUX") { store.selectSource("aux") }
-                    .keyboardShortcut("2", modifiers: .command)
-                    .disabled(!store.canControl)
-                Button("USB") { store.selectSource("usb") }
-                    .keyboardShortcut("3", modifiers: .command)
-                    .disabled(!store.canControl)
-                Button("AirPlay") { store.selectSource("airplay") }
-                    .keyboardShortcut("4", modifiers: .command)
-                    .disabled(!store.canControl)
+                ForEach(store.availableSources) { source in
+                    Button(source.title) { store.selectSource(source.id) }
+                        .disabled(!store.canSetSource)
+                }
                 Divider()
                 Button("增大音量") { store.adjustVolume(1) }
                     .keyboardShortcut("=", modifiers: .command)
-                    .disabled(!store.canControl)
+                    .disabled(!store.canSetVolume)
                 Button("减小音量") { store.adjustVolume(-1) }
                     .keyboardShortcut("-", modifiers: .command)
-                    .disabled(!store.canControl)
+                    .disabled(!store.canSetVolume)
             }
         }
     }
-}
-
-private func applicationIcon() -> NSImage {
-    let size = NSSize(width: 512, height: 512)
-    let icon = NSImage(size: size)
-    icon.lockFocus()
-    NSColor.controlAccentColor.setFill()
-    NSBezierPath(roundedRect: NSRect(origin: .zero, size: size), xRadius: 112, yRadius: 112).fill()
-    if let speaker = NSImage(
-        systemSymbolName: "hifispeaker.2.fill",
-        accessibilityDescription: "OpenEdifier"
-    )?.withSymbolConfiguration(.init(pointSize: 220, weight: .medium)) {
-        speaker.isTemplate = true
-        NSColor.white.set()
-        speaker.draw(
-            in: NSRect(x: 106, y: 126, width: 300, height: 260),
-            from: .zero,
-            operation: .sourceOver,
-            fraction: 1
-        )
-    }
-    icon.unlockFocus()
-    return icon
 }

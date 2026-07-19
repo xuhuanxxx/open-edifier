@@ -10,7 +10,8 @@ use open_edifier::{
 #[derive(Debug, Parser)]
 #[command(
     name = "edifier",
-    about = "Discover and control EDIFIER speakers locally"
+    about = "Discover and control EDIFIER speakers locally",
+    version
 )]
 struct Args {
     /// Connect directly instead of using mDNS discovery.
@@ -216,6 +217,16 @@ fn print_status(status: &DeviceStatus, json: bool) -> Result<()> {
                 .map_err(|error| Error::Serialization(error.to_string()))?
         );
     } else {
+        let source = status
+            .source
+            .as_ref()
+            .map(ToString::to_string)
+            .unwrap_or_else(|| "n/a".to_owned());
+        let volume = status
+            .volume
+            .as_ref()
+            .map(|volume| format!("{}/{}", volume.current, volume.max))
+            .unwrap_or_else(|| "n/a".to_owned());
         let equalizer = status
             .equalizer
             .as_ref()
@@ -227,15 +238,8 @@ fn print_status(status: &DeviceStatus, json: bool) -> Result<()> {
             .map(ToString::to_string)
             .unwrap_or_else(|| "unknown".to_owned());
         println!(
-            "{} | model={} | source={} | volume={}/{} | eq={} | playback={} | firmware={}",
-            status.name,
-            status.model,
-            status.source,
-            status.volume.current,
-            status.volume.max,
-            equalizer,
-            playback,
-            status.firmware
+            "{} | model={} | source={} | volume={} | eq={} | playback={} | firmware={}",
+            status.name, status.model, source, volume, equalizer, playback, status.firmware
         );
     }
     Ok(())

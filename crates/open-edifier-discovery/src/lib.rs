@@ -7,11 +7,12 @@ use std::{
 };
 
 use mdns_sd::{ResolvedService, ServiceDaemon, ServiceEvent};
-use open_edifier_core::{DiscoveredDevice, Error, MODEL_S260, ModelId, Result};
+use open_edifier_core::{DiscoveredDevice, Error, ModelId, Result};
 
 /// DNS-SD service used to identify the verified S260.
 pub const AIRPLAY_SERVICE: &str = "_airplay._tcp.local.";
 const S260_AIRPLAY_MODEL: &str = "EDF100122";
+const S260_DRIVER_MODEL: &str = "s260";
 
 /// Discovers EDIFIER candidates for the full requested duration.
 pub fn discover(timeout: Duration) -> Result<Vec<DiscoveredDevice>> {
@@ -88,7 +89,7 @@ fn classify_model(name: &str, advertised_model: &str) -> ModelId {
     if advertised_model.eq_ignore_ascii_case(S260_AIRPLAY_MODEL)
         || name.to_ascii_lowercase().contains("s260")
     {
-        ModelId::new(MODEL_S260)
+        ModelId::new(S260_DRIVER_MODEL)
     } else {
         ModelId::new(advertised_model)
     }
@@ -102,7 +103,7 @@ mod tests {
     fn recognizes_s260_after_user_renames_airplay_service() {
         assert_eq!(
             classify_model("Living Room", S260_AIRPLAY_MODEL).as_str(),
-            MODEL_S260
+            S260_DRIVER_MODEL
         );
     }
 

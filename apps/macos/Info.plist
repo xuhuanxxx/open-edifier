@@ -4,8 +4,10 @@
 <dict>
     <key>CFBundleDevelopmentRegion</key>
     <string>zh_CN</string>
-    <key>CFBundleExecutable</key>
-    <string>OpenEdifier</string>
+	<key>CFBundleExecutable</key>
+	<string>OpenEdifier</string>
+	<key>CFBundleIconFile</key>
+	<string>OpenEdifier</string>
     <key>CFBundleIdentifier</key>
     <string>dev.openedifier.macos</string>
     <key>CFBundleInfoDictionaryVersion</key>

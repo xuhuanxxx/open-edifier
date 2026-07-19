@@ -5,11 +5,12 @@ edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
 readme.workspace = true
 keywords.workspace = true
 categories.workspace = true
 description = "Shared device contracts for the OpenEdifier ecosystem"
-documentation = "https://docs.rs/open-edifier-core"
 
 [dependencies]
 serde.workspace = true

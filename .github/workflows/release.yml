@@ -1,0 +1,48 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  github-release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Validate tag and release notes
+        shell: bash
+        run: |
+          version=$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml)
+          test "$GITHUB_REF_NAME" = "v$version"
+          test -f "docs/release-notes/$version.md"
+          ! grep -q "尚未执行当前 tag 的发布前实机验收" "docs/release-notes/$version.md"
+      - name: Run release quality gates
+        shell: bash
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy --workspace --all-targets --locked -- -D warnings
+          cargo test --workspace --all-targets --locked
+          RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked
+          cargo package --workspace --allow-dirty --no-verify
+      - name: Build macOS release
+        run: apps/macos/package.sh
+        env:
+          OPEN_EDIFIER_BUILD_NUMBER: ${{ github.run_number }}
+      - name: Create GitHub prerelease
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=${GITHUB_REF_NAME#v}
+          gh release create "$GITHUB_REF_NAME" \
+            --verify-tag \
+            --prerelease \
+            --title "OpenEdifier $version" \
+            --notes-file "docs/release-notes/$version.md" \
+            apps/macos/dist/OpenEdifier-"$version"-macos-arm64.dmg \
+            apps/macos/dist/OpenEdifier-"$version"-macos-arm64.dmg.sha256

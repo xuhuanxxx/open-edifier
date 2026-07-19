@@ -5,11 +5,12 @@ edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
 readme.workspace = true
 keywords.workspace = true
 categories.workspace = true
 description = "EDIFIER S260 local network driver for the OpenEdifier ecosystem"
-documentation = "https://docs.rs/open-edifier-s260"
 
 [dependencies]
 open-edifier-aaec = { version = "0.1.0-alpha.1", path = "../open-edifier-aaec" }

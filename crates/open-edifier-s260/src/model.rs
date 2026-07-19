@@ -1,10 +1,10 @@
 use open_edifier_core::{
-    DeviceStatus, Equalizer, MODEL_S260, ModelId, PlaybackState, Source, Volume,
+    DeviceCapabilities, DeviceStatus, Equalizer, ModelId, PlaybackState, Source, Volume,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::{Error, Result};
+use crate::{Error, MODEL_ID, Result};
 
 pub(crate) fn source_from_index(value: u64) -> Result<Source> {
     match value {
@@ -52,8 +52,6 @@ pub struct SpeakerStatus {
     pub min_volume: u8,
     /// Device-reported maximum volume.
     pub max_volume: u8,
-    /// Raw vendor feature names.
-    pub supported_features: Vec<String>,
     /// Equalizer state when reported by the device.
     pub equalizer: Option<Equalizer>,
     /// Playback state when reported by the current source.
@@ -93,7 +91,6 @@ impl SpeakerStatus {
             volume,
             min_volume,
             max_volume,
-            supported_features: wire.supported_features,
             equalizer,
             playback,
         })
@@ -107,8 +104,6 @@ fn checked_u8(value: u64, field: &str) -> Result<u8> {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct StatusResponse {
-    #[serde(default)]
-    supported_features: Vec<String>,
     #[serde(default)]
     device_info: DeviceInfo,
     input_source: InputSource,
@@ -156,17 +151,26 @@ impl From<SpeakerStatus> for DeviceStatus {
     fn from(status: SpeakerStatus) -> Self {
         Self {
             name: status.name,
-            model: ModelId::new(MODEL_S260),
+            model: ModelId::new(MODEL_ID),
             firmware: status.firmware,
-            source: status.source,
-            volume: Volume {
+            source: Some(status.source),
+            volume: Some(Volume {
                 current: status.volume,
                 min: status.min_volume,
                 max: status.max_volume,
-            },
+            }),
             equalizer: status.equalizer,
             playback: status.playback,
-            capabilities: status.supported_features,
+            capabilities: DeviceCapabilities {
+                sources: [Source::BLUETOOTH, Source::AUX, Source::USB, Source::AIRPLAY]
+                    .into_iter()
+                    .map(Source::new)
+                    .collect(),
+                volume: true,
+                equalizer: true,
+                playback: true,
+                events: true,
+            },
         }
     }
 }
@@ -203,9 +207,13 @@ mod tests {
             "inputSource": {"inputIndex": 1, "selectedIndex": 2},
             "player": {"volume": 18, "minVolume": 0, "maxVolume": 30}
         });
-        let serialized = serde_json::to_string(&SpeakerStatus::from_value(value).unwrap()).unwrap();
+        let public = DeviceStatus::from(SpeakerStatus::from_value(value).unwrap());
+        let serialized = serde_json::to_string(&public).unwrap();
         assert!(!serialized.contains("private-network"));
         assert!(!serialized.contains("private-device"));
         assert!(!serialized.contains("wifiMac"));
+        assert!(!serialized.contains("supportedFeatures"));
+        assert!(!serialized.contains("deviceInfo"));
+        assert!(serialized.contains(r#""sources":["bluetooth","aux","usb","airplay"]"#));
     }
 }

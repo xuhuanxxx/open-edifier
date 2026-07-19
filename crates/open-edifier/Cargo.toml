@@ -5,11 +5,12 @@ edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
 readme.workspace = true
 keywords.workspace = true
 categories.workspace = true
 description = "Local-first Rust SDK for supported EDIFIER speakers"
-documentation = "https://docs.rs/open-edifier"
 
 [dependencies]
 open-edifier-core = { version = "0.1.0-alpha.1", path = "../open-edifier-core" }

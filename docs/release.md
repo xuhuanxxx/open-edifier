@@ -51,6 +51,8 @@ apps/macos/dist/OpenEdifier-<version>-macos-arm64.dmg.sha256
 
 主仓库转为 public 且 release tag 可下载后，创建 `xuhuanxxx/homebrew-tap` public 仓库和 `Formula/open-edifier.rb`。formula 固定到 tag tarball 和 SHA-256，只安装 `edifier` CLI。
 
+当前已经使用干净 commit 的本地源码归档和临时 tap 验证 formula 的 style、源码安装、test、version/help 和卸载。这个结果只证明构建与测试逻辑有效；正式发布仍必须使用 public tag tarball 重新计算 SHA-256，并完成 online audit、升级和卸载验证。
+
 ```bash
 brew style xuhuanxxx/tap/open-edifier
 brew audit --strict --online xuhuanxxx/tap/open-edifier

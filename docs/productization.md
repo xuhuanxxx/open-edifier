@@ -49,15 +49,15 @@ Rust workspace、CLI、macOS App、文档、测试和研究记录共同组成这
 | Git 基线 | 已完成 | `main` 已建立初始 commit，并推送到个人 private GitHub 仓库 |
 | 首轮敏感信息审计 | 已完成 | private 推送前已检查路径、地址、凭据、专有格式、ignored 文件和大文件；转 public 前必须复跑 |
 | 最小公开文件 | 已完成 | README、LICENSE、CONTRIBUTING、SECURITY、CHANGELOG 和 `.gitignore` 已存在 |
-| Rust CI | 已完成 | Linux、macOS、Windows 测试，fmt、clippy、doc 和 MSRV 已配置 |
+| Rust CI | 已完成并通过 | Linux、macOS、Windows 测试，fmt、clippy、doc 和 Rust 1.85 MSRV 已在 GitHub Actions 通过 |
 | CLI 版本 | 已完成 | `edifier --version` 从 Cargo package version 输出完整版本 |
-| macOS 发布工程 | 本地已完成，待 CI 回读 | 版本注入、原创图标、ad-hoc 签名、DMG、checksum 和 macOS CI 已落地 |
+| macOS 发布工程 | 已完成并通过 | 版本注入、原创图标、ad-hoc 签名、DMG 和 checksum 已落地，本地与 GitHub Actions 构建均通过 |
 | tag 到 GitHub prerelease | 本地已完成流程，尚未触发 | workflow 会校验 tag、release notes、质量门和 macOS 产物；当前没有 tag |
 | GitHub public | 未完成 | 当前仓库保持 private，改为 public 需要明确授权 |
 | Homebrew tap | 未完成 | 必须等待主仓库 public 且 tag 源码可下载 |
 | 发布候选实机验收 | 已完成 | S260 完成状态、最小音量/EQ 写入恢复、当前输入源、播放 ACK 和实时事件验证，最终状态已记录 |
 | DMG 结构验收 | 已完成 | image checksum、挂载、App、`/Applications` 快捷方式和 bundle 签名已回读验证 |
-| 干净环境安装 | 未完成 | 仍需全新 clone、Homebrew 和带 quarantine 的非开发 macOS 用户环境验证 |
+| 干净环境安装 | 部分完成 | 全新 private clone 的 CLI 源码安装和版本命令已通过；仍需 Homebrew 和带 quarantine 的非开发 macOS 用户环境验证 |
 
 ## 产品化原则
 

@@ -13,6 +13,6 @@ categories.workspace = true
 description = "Local-first Rust SDK for supported EDIFIER speakers"
 
 [dependencies]
-open-edifier-core = { version = "0.1.0-alpha.1", path = "../open-edifier-core" }
-open-edifier-discovery = { version = "0.1.0-alpha.1", path = "../open-edifier-discovery" }
-open-edifier-s260 = { version = "0.1.0-alpha.1", path = "../open-edifier-s260" }
+open-edifier-core = { version = "0.2.0-alpha.1", path = "../open-edifier-core" }
+open-edifier-discovery = { version = "0.2.0-alpha.1", path = "../open-edifier-discovery" }
+open-edifier-s260 = { version = "0.2.0-alpha.1", path = "../open-edifier-s260" }

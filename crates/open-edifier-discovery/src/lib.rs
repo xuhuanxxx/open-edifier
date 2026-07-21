@@ -14,8 +14,8 @@ pub const AIRPLAY_SERVICE: &str = "_airplay._tcp.local.";
 const S260_AIRPLAY_MODEL: &str = "EDF100122";
 const S260_DRIVER_MODEL: &str = "s260";
 
-/// Discovers EDIFIER candidates for the full requested duration.
-pub fn discover(timeout: Duration) -> Result<Vec<DiscoveredDevice>> {
+/// Discovers EDIFIER candidates, including models without an installed driver.
+pub fn discover_candidates(timeout: Duration) -> Result<Vec<DiscoveredDevice>> {
     let daemon = ServiceDaemon::new().map_err(discovery_error)?;
     let receiver = daemon.browse(AIRPLAY_SERVICE).map_err(discovery_error)?;
     let deadline = Instant::now() + timeout;
@@ -85,10 +85,8 @@ fn discovery_error(error: impl std::fmt::Display) -> Error {
     Error::Discovery(error.to_string())
 }
 
-fn classify_model(name: &str, advertised_model: &str) -> ModelId {
-    if advertised_model.eq_ignore_ascii_case(S260_AIRPLAY_MODEL)
-        || name.to_ascii_lowercase().contains("s260")
-    {
+fn classify_model(_name: &str, advertised_model: &str) -> ModelId {
+    if advertised_model.eq_ignore_ascii_case(S260_AIRPLAY_MODEL) {
         ModelId::new(S260_DRIVER_MODEL)
     } else {
         ModelId::new(advertised_model)
@@ -111,6 +109,14 @@ mod tests {
     fn preserves_unknown_advertised_model() {
         assert_eq!(
             classify_model("EDIFIER Studio", "EDF999999").as_str(),
+            "edf999999"
+        );
+    }
+
+    #[test]
+    fn a_mutable_name_cannot_promote_an_unknown_model() {
+        assert_eq!(
+            classify_model("EDIFIER S260", "EDF999999").as_str(),
             "edf999999"
         );
     }

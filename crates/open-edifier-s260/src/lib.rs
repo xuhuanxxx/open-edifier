@@ -10,9 +10,7 @@ mod protocol;
 pub use client::{Client, ClientConfig, DEFAULT_PORT};
 pub use error::{Error, Result};
 pub use events::EventStream;
-pub use model::SpeakerStatus;
 pub use open_edifier_core::Source;
-pub use protocol::{FRAME_HEADER, FrameDecoder};
 
 /// Canonical driver identifier for the EDIFIER S260.
 pub const MODEL_ID: &str = "s260";

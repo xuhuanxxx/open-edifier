@@ -13,8 +13,13 @@ pub enum Error {
     #[error("invalid protocol frame: {0}")]
     Protocol(String),
     /// Explicit command rejection from the speaker.
-    #[error("speaker rejected command: {0}")]
-    Rejected(String),
+    #[error("speaker rejected command with code {code}: {message}")]
+    Rejected {
+        /// Device result code.
+        code: i64,
+        /// Sanitized device message.
+        message: String,
+    },
     /// Required response field was absent.
     #[error("speaker response did not contain {0}")]
     MissingField(&'static str),
@@ -34,14 +39,25 @@ pub enum Error {
         /// Device-reported maximum.
         max: u8,
     },
-    /// Device state did not reflect an acknowledged mutation.
-    #[error("speaker acknowledged the command but reported {actual} instead of {expected}")]
-    Verification {
+    /// Device state did not reflect an acknowledged mutation before the deadline.
+    #[error(
+        "{field} did not reach {expected} within {elapsed_ms} ms after {attempts} checks; last observed {actual}"
+    )]
+    VerificationTimeout {
+        /// State field being verified.
+        field: &'static str,
         /// Requested value.
         expected: String,
-        /// Value reported after the mutation.
+        /// Last value reported during verification.
         actual: String,
+        /// Number of state queries made.
+        attempts: u32,
+        /// Elapsed verification time in milliseconds.
+        elapsed_ms: u64,
     },
+    /// Event connection could not be restored within the caller's wait budget.
+    #[error("event stream reconnect failed: {0}")]
+    Reconnect(String),
     /// Requested equalizer preset was outside the reported range.
     #[error("equalizer preset {value} is outside 0..{preset_count}")]
     InvalidEqPreset {
@@ -60,21 +76,42 @@ impl From<Error> for open_edifier_core::Error {
         use open_edifier_core::{Error as CoreError, Source};
 
         match error {
-            Error::Io(error) => CoreError::Network(error.to_string()),
-            Error::Json(error) => CoreError::Protocol(error.to_string()),
-            Error::Protocol(message) => CoreError::Protocol(message),
-            Error::Rejected(message) => CoreError::Rejected(message),
-            Error::MissingField(field) => CoreError::Protocol(format!("missing field {field}")),
-            Error::InvalidSource(index) => {
-                CoreError::Protocol(format!("invalid source index {index}"))
-            }
+            Error::Io(error) => CoreError::Network {
+                operation: "S260 socket operation",
+                message: error.to_string(),
+            },
+            Error::Json(error) => CoreError::Protocol {
+                message: error.to_string(),
+            },
+            Error::Protocol(message) => CoreError::Protocol { message },
+            Error::Rejected { code, message } => CoreError::Rejected { code, message },
+            Error::MissingField(field) => CoreError::Protocol {
+                message: format!("missing field {field}"),
+            },
+            Error::InvalidSource(index) => CoreError::Protocol {
+                message: format!("invalid source index {index}"),
+            },
             Error::UnsupportedSource(source) => CoreError::UnsupportedSource(Source::new(source)),
             Error::InvalidVolume { value, min, max } => {
                 CoreError::InvalidVolume { value, min, max }
             }
-            Error::Verification { expected, actual } => {
-                CoreError::Verification { expected, actual }
-            }
+            Error::VerificationTimeout {
+                field,
+                expected,
+                actual,
+                attempts,
+                elapsed_ms,
+            } => CoreError::VerificationTimeout {
+                field,
+                expected,
+                actual,
+                attempts,
+                elapsed_ms,
+            },
+            Error::Reconnect(message) => CoreError::Network {
+                operation: "event stream reconnect",
+                message,
+            },
             Error::InvalidEqPreset {
                 value,
                 preset_count,

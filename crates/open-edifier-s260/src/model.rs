@@ -1,7 +1,7 @@
 use open_edifier_core::{
     DeviceCapabilities, DeviceStatus, Equalizer, ModelId, PlaybackState, Source, Volume,
 };
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::Value;
 
 use crate::{Error, MODEL_ID, Result};
@@ -36,8 +36,8 @@ pub(crate) fn playback_state(state: u64) -> PlaybackState {
 }
 
 /// Parsed, privacy-safe S260 state.
-#[derive(Debug, Clone, PartialEq, Serialize)]
-pub struct SpeakerStatus {
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct S260Status {
     /// Current Bluetooth/device name.
     pub name: String,
     /// Device firmware version.
@@ -58,22 +58,41 @@ pub struct SpeakerStatus {
     pub playback: Option<PlaybackState>,
 }
 
-impl SpeakerStatus {
+impl S260Status {
     pub(crate) fn from_value(raw: Value) -> Result<Self> {
         let wire: StatusResponse = serde_json::from_value(raw)?;
         let source = source_from_index(wire.input_source.selected_index)?;
         let volume = checked_u8(wire.player.volume, "volume")?;
         let min_volume = checked_u8(wire.player.min_volume.unwrap_or(0), "minVolume")?;
         let max_volume = checked_u8(wire.player.max_volume, "maxVolume")?;
+        if min_volume > max_volume || !(min_volume..=max_volume).contains(&volume) {
+            return Err(Error::Protocol(format!(
+                "invalid volume range: min={min_volume}, current={volume}, max={max_volume}"
+            )));
+        }
         let equalizer = match wire.sound_effect {
             Some(SoundEffect {
                 selected_index: Some(preset),
                 sound_index: Some(preset_count),
-            }) => Some(Equalizer {
-                preset: checked_u8(preset, "EQ preset")?,
-                preset_count: checked_u8(preset_count, "EQ preset count")?,
-            }),
-            _ => None,
+            }) => {
+                let preset = checked_u8(preset, "EQ preset")?;
+                let preset_count = checked_u8(preset_count, "EQ preset count")?;
+                if preset_count == 0 || preset >= preset_count {
+                    return Err(Error::Protocol(format!(
+                        "invalid EQ range: preset={preset}, preset_count={preset_count}"
+                    )));
+                }
+                Some(Equalizer {
+                    preset,
+                    preset_count,
+                })
+            }
+            Some(SoundEffect {
+                selected_index: None,
+                sound_index: None,
+            })
+            | None => None,
+            Some(_) => return Err(Error::MissingField("complete soundEffect range")),
         };
         let playback = wire.player.player_status.map(playback_state);
 
@@ -147,8 +166,8 @@ struct SoundEffect {
     sound_index: Option<u64>,
 }
 
-impl From<SpeakerStatus> for DeviceStatus {
-    fn from(status: SpeakerStatus) -> Self {
+impl From<S260Status> for DeviceStatus {
+    fn from(status: S260Status) -> Self {
         Self {
             name: status.name,
             model: ModelId::new(MODEL_ID),
@@ -188,7 +207,7 @@ mod tests {
             "player": {"volume": 18, "minVolume": 256, "maxVolume": 30}
         });
         assert!(matches!(
-            SpeakerStatus::from_value(value),
+            S260Status::from_value(value),
             Err(Error::Protocol(message)) if message.contains("minVolume")
         ));
     }
@@ -207,7 +226,7 @@ mod tests {
             "inputSource": {"inputIndex": 1, "selectedIndex": 2},
             "player": {"volume": 18, "minVolume": 0, "maxVolume": 30}
         });
-        let public = DeviceStatus::from(SpeakerStatus::from_value(value).unwrap());
+        let public = DeviceStatus::from(S260Status::from_value(value).unwrap());
         let serialized = serde_json::to_string(&public).unwrap();
         assert!(!serialized.contains("private-network"));
         assert!(!serialized.contains("private-device"));
@@ -215,5 +234,27 @@ mod tests {
         assert!(!serialized.contains("supportedFeatures"));
         assert!(!serialized.contains("deviceInfo"));
         assert!(serialized.contains(r#""sources":["bluetooth","aux","usb","airplay"]"#));
+    }
+
+    #[test]
+    fn rejects_inconsistent_public_state_ranges() {
+        let volume = json!({
+            "inputSource": {"selectedIndex": 2},
+            "player": {"volume": 31, "minVolume": 0, "maxVolume": 30}
+        });
+        assert!(matches!(
+            S260Status::from_value(volume),
+            Err(Error::Protocol(message)) if message.contains("volume range")
+        ));
+
+        let equalizer = json!({
+            "inputSource": {"selectedIndex": 2},
+            "player": {"volume": 18, "minVolume": 0, "maxVolume": 30},
+            "soundEffect": {"selectedIndex": 3, "soundIndex": 3}
+        });
+        assert!(matches!(
+            S260Status::from_value(equalizer),
+            Err(Error::Protocol(message)) if message.contains("EQ range")
+        ));
     }
 }

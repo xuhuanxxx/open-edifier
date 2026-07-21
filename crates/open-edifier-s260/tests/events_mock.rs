@@ -1,4 +1,9 @@
-use std::{io::Write, net::TcpListener, thread, time::Duration};
+use std::{
+    io::Write,
+    net::{SocketAddr, TcpListener},
+    thread,
+    time::{Duration, Instant},
+};
 
 use open_edifier_core::DeviceEvent;
 use open_edifier_s260::{ClientConfig, EventStream};
@@ -14,14 +19,9 @@ fn event_stream_ignores_heartbeat_and_decodes_volume() {
         stream.write_all(&bytes).unwrap();
     });
 
-    let mut events = EventStream::connect(ClientConfig {
-        host: address.ip().to_string(),
-        port: address.port(),
-        timeout: Duration::from_secs(2),
-    })
-    .unwrap();
+    let mut events = EventStream::connect(config(address)).unwrap();
     assert_eq!(
-        events.next_event().unwrap(),
+        events.next_event(Duration::from_secs(2)).unwrap(),
         Some(DeviceEvent::Volume {
             current: 18,
             max: 30,
@@ -43,25 +43,11 @@ fn event_stream_reconnects_after_the_speaker_closes_the_socket() {
         second.write_all(&response(0x0066, &[30, 12])).unwrap();
     });
 
-    let mut events = EventStream::connect(ClientConfig {
-        host: address.ip().to_string(),
-        port: address.port(),
-        timeout: Duration::from_secs(2),
-    })
-    .unwrap();
-
-    assert_eq!(events.next_event().unwrap(), None);
-    let deadline = std::time::Instant::now() + Duration::from_secs(3);
-    let event = loop {
-        if let Some(event) = events.next_event().unwrap() {
-            break event;
-        }
-        assert!(
-            std::time::Instant::now() < deadline,
-            "event stream did not reconnect"
-        );
-        thread::sleep(Duration::from_millis(25));
-    };
+    let mut events = EventStream::connect(config(address)).unwrap();
+    let event = events
+        .next_event(Duration::from_secs(3))
+        .unwrap()
+        .expect("event stream did not reconnect");
     assert_eq!(
         event,
         DeviceEvent::Volume {
@@ -69,6 +55,24 @@ fn event_stream_reconnects_after_the_speaker_closes_the_socket() {
             max: 30,
         }
     );
+    server.join().unwrap();
+}
+
+#[test]
+fn reconnect_backoff_waits_instead_of_busy_looping() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = listener.local_addr().unwrap();
+    let server = thread::spawn(move || {
+        let (mut stream, _) = listener.accept().unwrap();
+        stream.write_all(&response(0x003f, &[0; 9])).unwrap();
+        drop(stream);
+        drop(listener);
+    });
+
+    let mut events = EventStream::connect(config(address)).unwrap();
+    let started = Instant::now();
+    assert!(events.next_event(Duration::from_millis(300)).is_err());
+    assert!(started.elapsed() >= Duration::from_millis(250));
     server.join().unwrap();
 }
 
@@ -82,4 +86,12 @@ fn response(command: u16, payload: &[u8]) -> Vec<u8> {
         .fold(0_u8, |sum, value| sum.wrapping_add(*value));
     frame.push(checksum);
     frame
+}
+
+fn config(address: SocketAddr) -> ClientConfig {
+    let mut config = ClientConfig::new(address.ip().to_string());
+    config.port = address.port();
+    config.connect_timeout = Duration::from_millis(100);
+    config.request_timeout = Duration::from_secs(2);
+    config
 }

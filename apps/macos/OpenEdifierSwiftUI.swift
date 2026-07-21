@@ -51,15 +51,25 @@ struct SpeakerStatus: Codable {
 private struct BridgeEnvelope<T: Decodable>: Decodable {
     let ok: Bool
     let data: T?
-    let error: String?
+    let error: BridgeFailure?
+}
+
+private struct BridgeFailure: Decodable {
+    let kind: String
+    let message: String
+    let field: String?
+    let expected: String?
+    let actual: String?
 }
 
 private enum BridgeError: LocalizedError {
     case message(String)
+    case failure(BridgeFailure)
 
     var errorDescription: String? {
         switch self {
         case .message(let message): message
+        case .failure(let failure): failure.message
         }
     }
 }
@@ -115,7 +125,10 @@ private enum RustBridge {
         let responseData = Data(bytes: responsePointer, count: strlen(responsePointer))
         let envelope = try JSONDecoder().decode(BridgeEnvelope<T>.self, from: responseData)
         guard envelope.ok, let data = envelope.data else {
-            throw BridgeError.message(envelope.error ?? "未知控制错误")
+            if let error = envelope.error {
+                throw BridgeError.failure(error)
+            }
+            throw BridgeError.message("未知控制错误")
         }
         return data
     }
@@ -127,6 +140,7 @@ private struct SourceOption: Identifiable {
     let symbol: String
 }
 
+@MainActor
 private final class SpeakerStore: ObservableObject {
     private static let sourceMetadata: [String: (title: String, symbol: String)] = [
         "bluetooth": ("蓝牙", "dot.radiowaves.left.and.right"),
@@ -144,9 +158,10 @@ private final class SpeakerStore: ObservableObject {
     @Published var volumeLevel = 0.0
 
     private let selectedDeviceKey = "OpenEdifier.selectedDeviceID"
+    private let deviceQueue = DispatchQueue(label: "dev.openedifier.device", qos: .userInitiated)
     private var started = false
-    private var operationRevision = 0
     private var refreshTimer: Timer?
+    private var policy = StorePolicy()
 
     var canControl: Bool { status != nil && !busy }
     var canSetSource: Bool { canControl && !availableSources.isEmpty }
@@ -167,7 +182,9 @@ private final class SpeakerStore: ObservableObject {
         started = true
         discover()
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
-            self?.refreshQuietly()
+            Task { @MainActor in
+                self?.refreshQuietly()
+            }
         }
     }
 
@@ -178,14 +195,13 @@ private final class SpeakerStore: ObservableObject {
     func discover() {
         guard !busy else { return }
         beginOperation()
-        let revision = operationRevision
         let preferredID = UserDefaults.standard.string(forKey: selectedDeviceKey)
-        DispatchQueue.global(qos: .userInitiated).async {
+        deviceQueue.async {
             do {
                 let devices = try RustBridge.discover()
                 guard let device = devices.first(where: { $0.id == preferredID }) ?? devices.first else {
                     DispatchQueue.main.async { [weak self] in
-                        guard let self, self.operationRevision == revision else { return }
+                        guard let self else { return }
                         self.devices = []
                         self.selectedDeviceID = ""
                         self.status = nil
@@ -196,14 +212,14 @@ private final class SpeakerStore: ObservableObject {
                 }
                 let status = try RustBridge.status(device)
                 DispatchQueue.main.async { [weak self] in
-                    guard let self, self.operationRevision == revision else { return }
+                    guard let self else { return }
                     self.devices = devices
                     self.selectedDeviceID = device.id
                     self.apply(status)
                 }
             } catch {
                 DispatchQueue.main.async { [weak self] in
-                    self?.finish(error, revision: revision)
+                    self?.finish(error)
                 }
             }
         }
@@ -232,6 +248,13 @@ private final class SpeakerStore: ObservableObject {
         perform { try RustBridge.volume(level, device: device) }
     }
 
+    func volumeEditingChanged(_ editing: Bool) {
+        policy.setVolumeEditing(editing)
+        if !editing {
+            commitVolume()
+        }
+    }
+
     func adjustVolume(_ delta: Int) {
         guard let device = selectedDevice(), let volume = status?.volume else { return }
         let level = min(max(volume.current + delta, volume.min), volume.max)
@@ -253,7 +276,6 @@ private final class SpeakerStore: ObservableObject {
     }
 
     private func beginOperation() {
-        operationRevision += 1
         busy = true
         errorMessage = nil
     }
@@ -261,44 +283,44 @@ private final class SpeakerStore: ObservableObject {
     private func perform(_ operation: @escaping () throws -> SpeakerStatus) {
         guard !busy else { return }
         beginOperation()
-        let revision = operationRevision
-        DispatchQueue.global(qos: .userInitiated).async {
+        deviceQueue.async {
             do {
                 let status = try operation()
                 DispatchQueue.main.async { [weak self] in
-                    guard let self, self.operationRevision == revision else { return }
+                    guard let self else { return }
                     self.apply(status)
                 }
             } catch {
                 DispatchQueue.main.async { [weak self] in
-                    self?.finish(error, revision: revision)
+                    self?.finish(error)
                 }
             }
         }
     }
 
     private func refreshQuietly() {
-        guard !busy, let device = selectedDevice() else { return }
-        let revision = operationRevision
+        guard let device = selectedDevice(), policy.beginQuietRefresh(busy: busy) else { return }
         let deviceID = device.id
-        DispatchQueue.global(qos: .utility).async {
+        deviceQueue.async {
             do {
                 let status = try RustBridge.status(device)
                 DispatchQueue.main.async { [weak self] in
+                    guard let self else { return }
+                    self.policy.completeQuietRefresh()
                     guard
-                        let self,
                         !self.busy,
-                        self.operationRevision == revision,
+                        !self.policy.editingVolume,
                         self.selectedDeviceID == deviceID
                     else { return }
                     self.apply(status)
                 }
             } catch {
                 DispatchQueue.main.async { [weak self] in
+                    guard let self else { return }
+                    self.policy.completeQuietRefresh()
                     guard
-                        let self,
                         !self.busy,
-                        self.operationRevision == revision,
+                        !self.policy.editingVolume,
                         self.selectedDeviceID == deviceID
                     else { return }
                     self.connectionText = "状态同步暂时中断"
@@ -318,9 +340,11 @@ private final class SpeakerStore: ObservableObject {
         busy = false
     }
 
-    private func finish(_ error: Error, revision: Int) {
-        guard operationRevision == revision else { return }
+    private func finish(_ error: Error) {
         errorMessage = error.localizedDescription
+        if let volume = status?.volume {
+            volumeLevel = Double(volume.current)
+        }
         busy = false
     }
 
@@ -443,7 +467,7 @@ private struct ContentView: View {
                             in: store.volumeRange,
                             step: 1,
                             onEditingChanged: { editing in
-                                if !editing { store.commitVolume() }
+                                store.volumeEditingChanged(editing)
                             }
                         )
                         .accessibilityLabel("音量")

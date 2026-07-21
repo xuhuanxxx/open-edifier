@@ -45,6 +45,13 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
+      - name: Test macOS store policy
+        run: |
+          xcrun swiftc -parse-as-library \
+            apps/macos/StorePolicy.swift \
+            apps/macos/tests/StorePolicyTests.swift \
+            -o /tmp/open-edifier-store-policy-tests
+          /tmp/open-edifier-store-policy-tests
       - run: apps/macos/package.sh
         env:
           OPEN_EDIFIER_BUILD_NUMBER: ${{ github.run_number }}

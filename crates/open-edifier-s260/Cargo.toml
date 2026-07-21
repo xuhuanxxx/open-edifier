@@ -13,8 +13,8 @@ categories.workspace = true
 description = "EDIFIER S260 local network driver for the OpenEdifier ecosystem"
 
 [dependencies]
-open-edifier-aaec = { version = "0.1.0-alpha.1", path = "../open-edifier-aaec" }
-open-edifier-core = { version = "0.1.0-alpha.1", path = "../open-edifier-core" }
+open-edifier-aaec = { version = "0.2.0-alpha.1", path = "../open-edifier-aaec" }
+open-edifier-core = { version = "0.2.0-alpha.1", path = "../open-edifier-core" }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

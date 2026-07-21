@@ -1,5 +1,15 @@
 # 变更记录
 
+## 0.2.0-alpha.1 - 尚未发布
+
+- 不兼容地拆分 S260 连接、请求和写后验证超时，并为输入源、音量和 EQ 共用有截止时间的验证循环。
+- `Client` 直接返回公共 `DeviceStatus`；S260 内部状态和 framed JSON decoder 不再公开。
+- `DeviceEvents::next_event` 增加调用方等待预算，修复断线退避期间的 CLI 忙等并保留重连错误。
+- facade 发现只返回当前 build 支持的设备；低层 `discover_candidates` 保留未知候选，型号映射不再信任可修改名称。
+- framed JSON decoder 可在畸形帧后恢复，拒绝错误不再携带完整设备响应，状态和事件增加字段间校验。
+- Swift bridge 使用结构化错误；macOS 串行执行设备操作，在音量滑块编辑期间暂停轮询并在失败时回滚。
+- 版本提升到 `0.2.0-alpha.1`，不提供旧 Rust API、事件签名或 bridge error JSON 的兼容层。
+
 ## 0.1.0-alpha.1 - 2026-07-20
 
 - 新增与型号无关的核心契约和高层驱动选择。

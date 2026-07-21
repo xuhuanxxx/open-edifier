@@ -1,7 +1,7 @@
 //! Stable, model-independent contracts shared by OpenEdifier drivers and apps.
 #![warn(missing_docs)]
 
-use std::{fmt, net::IpAddr, str::FromStr};
+use std::{fmt, net::IpAddr, str::FromStr, time::Duration};
 
 use serde::{Deserialize, Serialize};
 
@@ -255,8 +255,8 @@ pub enum DeviceEvent {
 
 /// Blocking event stream implemented by devices with a push channel.
 pub trait DeviceEvents: Send {
-    /// Returns the next state event, or `None` after the configured read interval.
-    fn next_event(&mut self) -> Result<Option<DeviceEvent>>;
+    /// Returns the next state event, or `None` after waiting up to `max_wait`.
+    fn next_event(&mut self, max_wait: Duration) -> Result<Option<DeviceEvent>>;
 }
 
 /// Model-independent failures suitable for CLI and future language bindings.
@@ -278,14 +278,27 @@ pub enum Error {
         candidates: Vec<String>,
     },
     /// A network operation failed.
-    #[error("network error: {0}")]
-    Network(String),
+    #[error("network error during {operation}: {message}")]
+    Network {
+        /// Operation that failed.
+        operation: &'static str,
+        /// Sanitized failure description.
+        message: String,
+    },
     /// The device returned malformed or unexpected protocol data.
-    #[error("protocol error: {0}")]
-    Protocol(String),
+    #[error("protocol error: {message}")]
+    Protocol {
+        /// Sanitized protocol failure description.
+        message: String,
+    },
     /// The device explicitly rejected a command.
-    #[error("speaker rejected command: {0}")]
-    Rejected(String),
+    #[error("speaker rejected command with code {code}: {message}")]
+    Rejected {
+        /// Device result code.
+        code: i64,
+        /// Sanitized device message.
+        message: String,
+    },
     /// The requested source is not supported by the selected model.
     #[error("source {0:?} is not supported by this speaker")]
     UnsupportedSource(Source),
@@ -299,13 +312,21 @@ pub enum Error {
         /// Device-reported maximum.
         max: u8,
     },
-    /// A mutation was acknowledged but the following state did not match.
-    #[error("speaker reported {actual} after setting {expected}")]
-    Verification {
+    /// A mutation was acknowledged but did not reach the requested state in time.
+    #[error(
+        "{field} did not reach {expected} within {elapsed_ms} ms after {attempts} checks; last observed {actual}"
+    )]
+    VerificationTimeout {
+        /// State field being verified.
+        field: &'static str,
         /// Requested value.
         expected: String,
-        /// Value reported after the mutation.
+        /// Last value reported during verification.
         actual: String,
+        /// Number of state queries made.
+        attempts: u32,
+        /// Elapsed verification time in milliseconds.
+        elapsed_ms: u64,
     },
     /// Machine-readable output could not be serialized.
     #[error("serialization failed: {0}")]

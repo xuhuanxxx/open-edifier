@@ -3,22 +3,22 @@ use serde_json::Value;
 use crate::Result;
 
 /// Four-byte header that starts an S260 response frame.
-pub const FRAME_HEADER: [u8; 4] = [0xee, 0xdd, 0xff, 0xee];
+pub(crate) const FRAME_HEADER: [u8; 4] = [0xee, 0xdd, 0xff, 0xee];
 
 /// Incremental decoder for framed S260 responses and interleaved heartbeats.
 #[derive(Debug, Default)]
-pub struct FrameDecoder {
+pub(crate) struct FrameDecoder {
     buffer: Vec<u8>,
 }
 
 impl FrameDecoder {
     /// Creates a decoder for the verified plaintext S260 transport.
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self::default()
     }
 
     /// Feeds a possibly fragmented byte chunk and returns complete JSON messages.
-    pub fn feed(&mut self, chunk: &[u8]) -> Result<Vec<Value>> {
+    pub(crate) fn feed(&mut self, chunk: &[u8]) -> Vec<Result<Value>> {
         self.buffer.extend_from_slice(chunk);
 
         let mut messages = Vec::new();
@@ -46,11 +46,11 @@ impl FrameDecoder {
                 break;
             }
 
-            let value = serde_json::from_slice(&self.buffer[6..frame_end])?;
+            let payload = self.buffer[6..frame_end].to_vec();
             self.buffer.drain(..frame_end);
-            messages.push(value);
+            messages.push(serde_json::from_slice(&payload).map_err(Into::into));
         }
-        Ok(messages)
+        messages
     }
 }
 
@@ -88,7 +88,25 @@ mod tests {
         let expected = serde_json::json!({"id":"1","payload":"status_query"});
         let data = frame(&expected, &binary_frame(0x003f, &[0; 9]));
         let mut decoder = FrameDecoder::new();
-        assert!(decoder.feed(&data[..7]).unwrap().is_empty());
-        assert_eq!(decoder.feed(&data[7..]).unwrap(), vec![expected]);
+        assert!(decoder.feed(&data[..7]).is_empty());
+        let decoded: Vec<_> = decoder
+            .feed(&data[7..])
+            .into_iter()
+            .collect::<Result<_>>()
+            .unwrap();
+        assert_eq!(decoded, vec![expected]);
+    }
+
+    #[test]
+    fn recovers_after_malformed_json_in_the_same_chunk() {
+        let expected = serde_json::json!({"id":"2","payload":"status_query"});
+        let mut malformed = Vec::from(FRAME_HEADER);
+        malformed.extend(1_u16.to_be_bytes());
+        malformed.push(b'{');
+        malformed.extend(frame(&expected, &[]));
+
+        let decoded = FrameDecoder::new().feed(&malformed);
+        assert!(decoded[0].is_err());
+        assert_eq!(decoded[1].as_ref().unwrap(), &expected);
     }
 }

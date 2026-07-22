@@ -202,7 +202,7 @@ checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 
 [[package]]
 name = "open-edifier"
-version = "0.1.0-alpha.1"
+version = "0.2.0-alpha.1"
 dependencies = [
  "open-edifier-core",
  "open-edifier-discovery",
@@ -211,14 +211,14 @@ dependencies = [
 
 [[package]]
 name = "open-edifier-aaec"
-version = "0.1.0-alpha.1"
+version = "0.2.0-alpha.1"
 dependencies = [
  "thiserror",
 ]
 
 [[package]]
 name = "open-edifier-cli"
-version = "0.1.0-alpha.1"
+version = "0.2.0-alpha.1"
 dependencies = [
  "clap",
  "open-edifier",
@@ -227,7 +227,7 @@ dependencies = [
 
 [[package]]
 name = "open-edifier-core"
-version = "0.1.0-alpha.1"
+version = "0.2.0-alpha.1"
 dependencies = [
  "serde",
  "thiserror",
@@ -235,7 +235,7 @@ dependencies = [
 
 [[package]]
 name = "open-edifier-discovery"
-version = "0.1.0-alpha.1"
+version = "0.2.0-alpha.1"
 dependencies = [
  "mdns-sd",
  "open-edifier-core",
@@ -243,7 +243,7 @@ dependencies = [
 
 [[package]]
 name = "open-edifier-s260"
-version = "0.1.0-alpha.1"
+version = "0.2.0-alpha.1"
 dependencies = [
  "open-edifier-aaec",
  "open-edifier-core",
@@ -254,7 +254,7 @@ dependencies = [
 
 [[package]]
 name = "open-edifier-swift-bridge"
-version = "0.1.0-alpha.1"
+version = "0.2.0-alpha.1"
 dependencies = [
  "open-edifier",
  "serde",

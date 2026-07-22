@@ -4,7 +4,7 @@ use clap::{Parser, Subcommand};
 use open_edifier::{
     Device, DeviceEvent, DeviceEvents, DeviceStatus, DiscoveredDevice, Error, ModelId,
     PlaybackAction, Result, Source, connect, connect_events, connect_events_host, connect_host,
-    discover, supports_model,
+    discover,
 };
 
 #[derive(Debug, Parser)]
@@ -143,7 +143,9 @@ fn resolve_events(args: &Args, timeout: Duration) -> Result<Box<dyn DeviceEvents
 
 fn explicit_model(args: &Args) -> Result<ModelId> {
     Ok(ModelId::new(args.model.as_deref().ok_or_else(|| {
-        Error::Protocol("--model is required when --host is used".into())
+        Error::Protocol {
+            message: "--model is required when --host is used".into(),
+        }
     })?))
 }
 
@@ -166,11 +168,7 @@ fn select_device<'a>(
             })
             .ok_or(Error::DeviceNotFound);
     }
-    let supported: Vec<_> = devices
-        .iter()
-        .filter(|device| supports_model(&device.model))
-        .collect();
-    match supported.as_slice() {
+    match devices {
         [] => Err(Error::DeviceNotFound),
         [device] => Ok(device),
         candidates => Err(Error::AmbiguousDevice {
@@ -264,7 +262,7 @@ fn listen(mut events: Box<dyn DeviceEvents>, count: Option<u64>, json: bool) -> 
     }
     let mut emitted = 0_u64;
     loop {
-        let Some(event) = events.next_event()? else {
+        let Some(event) = events.next_event(Duration::from_millis(500))? else {
             continue;
         };
         if json {
@@ -333,11 +331,8 @@ mod tests {
     }
 
     #[test]
-    fn automatic_selection_ignores_devices_without_a_driver() {
-        let devices = [
-            device("one", "Office", "s260"),
-            device("two", "Unknown", "edf999999"),
-        ];
+    fn automatic_selection_accepts_one_facade_result() {
+        let devices = [device("one", "Office", "s260")];
         assert_eq!(select_device(&devices, None).unwrap().id, "one");
     }
 

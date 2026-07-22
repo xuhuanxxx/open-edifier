@@ -56,6 +56,7 @@ xcrun swiftc \
   -parse-as-library \
   -target arm64-apple-macosx26.0 \
   -import-objc-header "$script_dir/OpenEdifierBridge.h" \
+  "$script_dir/StorePolicy.swift" \
   "$script_dir/OpenEdifierSwiftUI.swift" \
   "$target_dir/libopen_edifier_swift_bridge.a" \
   -framework AppKit \

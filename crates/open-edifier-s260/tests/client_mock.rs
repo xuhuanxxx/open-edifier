@@ -1,6 +1,6 @@
 use std::{
     io::{Read, Write},
-    net::TcpListener,
+    net::{SocketAddr, TcpListener},
     thread,
     time::Duration,
 };
@@ -38,16 +38,14 @@ fn status_and_source_change_are_verified_end_to_end() {
         }
     });
 
-    let mut client = Client::connect(ClientConfig {
-        host: address.ip().to_string(),
-        port: address.port(),
-        timeout: Duration::from_secs(2),
-    })
-    .unwrap();
+    let mut client = Client::connect(config(address)).unwrap();
 
-    assert_eq!(client.status().unwrap().source, Source::new(Source::USB));
+    assert_eq!(
+        client.status().unwrap().source,
+        Some(Source::new(Source::USB))
+    );
     let updated = client.set_source(Source::new(Source::AUX)).unwrap();
-    assert_eq!(updated.source, Source::new(Source::AUX));
+    assert_eq!(updated.source, Some(Source::new(Source::AUX)));
     server.join().unwrap();
 }
 
@@ -68,13 +66,43 @@ fn rejects_a_response_without_an_explicit_result_code() {
         stream.write_all(&frame(&response, &[])).unwrap();
     });
 
-    let mut client = Client::connect(ClientConfig {
-        host: address.ip().to_string(),
-        port: address.port(),
-        timeout: Duration::from_secs(2),
-    })
-    .unwrap();
+    let mut client = Client::connect(config(address)).unwrap();
     assert!(matches!(client.status(), Err(Error::Protocol(message)) if message.contains("code")));
+    server.join().unwrap();
+}
+
+#[test]
+fn rejected_errors_do_not_include_untrusted_response_fields() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = listener.local_addr().unwrap();
+    let server = thread::spawn(move || {
+        let (mut stream, _) = listener.accept().unwrap();
+        let mut bytes = [0_u8; 2048];
+        let size = stream.read(&mut bytes).unwrap();
+        let request: Value = serde_json::from_slice(&bytes[..size]).unwrap();
+        let response = json!({
+            "code": 7,
+            "id": request["id"],
+            "payload": "status_query",
+            "message": "rejected",
+            "wifiName": "private-network",
+            "bluetoothPairingRecord": [{"name": "private-device"}]
+        });
+        stream.write_all(&frame(&response, &[])).unwrap();
+    });
+
+    let mut client = Client::connect(config(address)).unwrap();
+    let error = client.status().unwrap_err();
+    assert!(matches!(
+        error,
+        Error::Rejected {
+            code: 7,
+            ref message
+        } if message == "rejected"
+    ));
+    let displayed = error.to_string();
+    assert!(!displayed.contains("private-network"));
+    assert!(!displayed.contains("private-device"));
     server.join().unwrap();
 }
 
@@ -83,7 +111,10 @@ fn rejects_a_zero_connection_timeout() {
     let result = Client::connect(ClientConfig {
         host: "127.0.0.1".to_owned(),
         port: 9,
-        timeout: Duration::ZERO,
+        connect_timeout: Duration::ZERO,
+        request_timeout: Duration::from_secs(1),
+        verification_timeout: Duration::from_secs(1),
+        verification_interval: Duration::from_millis(50),
     });
     assert!(
         matches!(result, Err(Error::Io(error)) if error.kind() == std::io::ErrorKind::InvalidInput)
@@ -116,17 +147,82 @@ fn eq_and_playback_commands_use_verified_json_fields() {
         }
     });
 
-    let mut client = Client::connect(ClientConfig {
-        host: address.ip().to_string(),
-        port: address.port(),
-        timeout: Duration::from_secs(2),
-    })
-    .unwrap();
+    let mut client = Client::connect(config(address)).unwrap();
     assert_eq!(
         client.set_eq_preset(1).unwrap().equalizer.unwrap().preset,
         1
     );
     client.playback(PlaybackAction::Pause).unwrap();
+    server.join().unwrap();
+}
+
+#[test]
+fn volume_verification_retries_until_the_device_reports_the_target() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = listener.local_addr().unwrap();
+    let server = thread::spawn(move || {
+        let (mut stream, _) = listener.accept().unwrap();
+        let mut status_reads = 0;
+        for _ in 0..4 {
+            let mut bytes = [0_u8; 2048];
+            let size = stream.read(&mut bytes).unwrap();
+            let request: Value = serde_json::from_slice(&bytes[..size]).unwrap();
+            let id = request["id"].as_str().unwrap();
+            let response = if request["payload"] == "settings" {
+                assert_eq!(request["player"]["volume"], 19);
+                json!({"code": 0, "id": id, "payload": "settings", "message": "success"})
+            } else {
+                status_reads += 1;
+                status_with_volume(id, 2, 0, if status_reads < 3 { 18 } else { 19 })
+            };
+            stream.write_all(&frame(&response, &[])).unwrap();
+        }
+    });
+
+    let mut client = Client::connect(config(address)).unwrap();
+    let updated = client.set_volume(19).unwrap();
+    assert_eq!(updated.volume.unwrap().current, 19);
+    server.join().unwrap();
+}
+
+#[test]
+fn volume_verification_has_a_bounded_structured_failure() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = listener.local_addr().unwrap();
+    let server = thread::spawn(move || {
+        let (mut stream, _) = listener.accept().unwrap();
+        loop {
+            let mut bytes = [0_u8; 2048];
+            let size = stream.read(&mut bytes).unwrap();
+            if size == 0 {
+                break;
+            }
+            let request: Value = serde_json::from_slice(&bytes[..size]).unwrap();
+            let id = request["id"].as_str().unwrap();
+            let response = if request["payload"] == "settings" {
+                json!({"code": 0, "id": id, "payload": "settings", "message": "success"})
+            } else {
+                status_with_volume(id, 2, 0, 18)
+            };
+            stream.write_all(&frame(&response, &[])).unwrap();
+        }
+    });
+
+    let mut client_config = config(address);
+    client_config.verification_timeout = Duration::from_millis(120);
+    client_config.verification_interval = Duration::from_millis(20);
+    let mut client = Client::connect(client_config).unwrap();
+    assert!(matches!(
+        client.set_volume(19),
+        Err(Error::VerificationTimeout {
+            field: "volume",
+            expected,
+            actual,
+            attempts,
+            ..
+        }) if expected == "19" && actual == "18" && attempts >= 2
+    ));
+    drop(client);
     server.join().unwrap();
 }
 
@@ -144,6 +240,10 @@ fn status(id: &str, source: u8) -> Value {
 }
 
 fn status_with_eq(id: &str, source: u8, eq: u8) -> Value {
+    status_with_volume(id, source, eq, 18)
+}
+
+fn status_with_volume(id: &str, source: u8, eq: u8, volume: u8) -> Value {
     json!({
         "code": 0,
         "id": id,
@@ -159,7 +259,7 @@ fn status_with_eq(id: &str, source: u8, eq: u8) -> Value {
             "selectedIndex": source
         },
         "player": {
-            "volume": 18,
+            "volume": volume,
             "minVolume": 0,
             "maxVolume": 30,
             "playerStatus": 1
@@ -169,4 +269,12 @@ fn status_with_eq(id: &str, source: u8, eq: u8) -> Value {
             "soundIndex": 3
         }
     })
+}
+
+fn config(address: SocketAddr) -> ClientConfig {
+    let mut config = ClientConfig::new(address.ip().to_string());
+    config.port = address.port();
+    config.connect_timeout = Duration::from_secs(2);
+    config.request_timeout = Duration::from_secs(2);
+    config
 }

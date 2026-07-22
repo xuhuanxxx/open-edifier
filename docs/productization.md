@@ -45,7 +45,7 @@ Rust workspace、CLI、macOS App、文档、测试和研究记录共同组成这
 | 项目 | 当前状态 | 证据或剩余工作 |
 |---|---|---|
 | 核心能力 | 已完成 | S260 驱动、发现、CLI、SwiftUI App、mock 和架构文档均在仓库内 |
-| 多型号基础 | 已完成代码重构 | core 无型号常量，状态能力可选且结构化，facade 集中注册驱动，CLI/C ABI 无型号分支，macOS 按能力渲染；仍只有 S260 经过实机验证 |
+| 多型号基础 | 已完成最小契约 | core 无型号常量，状态能力可选且结构化，facade 直接匹配当前唯一驱动，CLI/C ABI 无型号分支，macOS 按能力渲染；仍只有 S260 经过实机验证 |
 | Git 基线 | 已完成 | `main` 已推送到个人 public GitHub 仓库，匿名 clone 已回读验证 |
 | 敏感信息与历史审计 | 已通过公开门 | 转 public 前已检查完整 Git 历史中的路径、地址、凭据特征、专有扩展名和大 blob，ignored 内容只有构建产物；后续 release 继续检查增量 |
 | 最小公开文件 | 已完成 | README、LICENSE、CONTRIBUTING、SECURITY、CHANGELOG 和 `.gitignore` 已存在 |
@@ -213,11 +213,11 @@ apps/macos/package.sh
 
 ## P0：项目可维护和可扩展
 
-多型号最小重构已经落地：core 不再包含 S260 常量；`DeviceStatus` 使用可选状态和稳定的 `DeviceCapabilities`；不支持 source、volume、EQ 或 playback 的驱动可以使用默认能力错误；facade 通过一个静态表集中注册驱动；CLI、C ABI 和 macOS App 不再写型号分支，macOS 控件根据驱动能力显示。
+多型号最小契约已经落地：core 不再包含 S260 常量；`DeviceStatus` 使用可选状态和稳定的 `DeviceCapabilities`；不支持 source、volume、EQ 或 playback 的驱动可以使用默认能力错误；facade 直接匹配当前唯一的 S260 驱动；CLI、C ABI 和 macOS App 不再写型号分支，macOS 控件根据驱动能力显示。
 
 这证明新驱动可以接入现有调度和产品入口，但不能证明某个未验证硬件兼容。当前 discovery 仍只实现经过 S260 确认的 AirPlay mDNS 路径；第二型号若使用其他发现方式，再根据真实广播证据增加 discoverer。
 
-完整扩展点、测试证据和新型号改动范围见[架构设计](architecture.md#新型号扩展准备度)。第二个型号出现前，不再增加插件系统、通用传输框架、宏注册表或 async runtime。
+完整扩展点、测试证据和新型号改动范围见[架构设计](architecture.md#新型号扩展准备度)。第二个型号出现前，不增加静态注册表、插件系统、通用传输框架、宏注册表或 async runtime。
 
 ## 发布候选验收
 

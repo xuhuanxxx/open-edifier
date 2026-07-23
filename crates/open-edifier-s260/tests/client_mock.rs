@@ -193,7 +193,18 @@ fn volume_verification_has_a_bounded_structured_failure() {
         let (mut stream, _) = listener.accept().unwrap();
         loop {
             let mut bytes = [0_u8; 2048];
-            let size = stream.read(&mut bytes).unwrap();
+            let size = match stream.read(&mut bytes) {
+                Ok(size) => size,
+                Err(error)
+                    if matches!(
+                        error.kind(),
+                        std::io::ErrorKind::ConnectionAborted | std::io::ErrorKind::ConnectionReset
+                    ) =>
+                {
+                    break;
+                }
+                Err(error) => panic!("mock server read failed: {error}"),
+            };
             if size == 0 {
                 break;
             }
@@ -204,7 +215,9 @@ fn volume_verification_has_a_bounded_structured_failure() {
             } else {
                 status_with_volume(id, 2, 0, 18)
             };
-            stream.write_all(&frame(&response, &[])).unwrap();
+            if stream.write_all(&frame(&response, &[])).is_err() {
+                break;
+            }
         }
     });
 
@@ -212,16 +225,20 @@ fn volume_verification_has_a_bounded_structured_failure() {
     client_config.verification_timeout = Duration::from_millis(120);
     client_config.verification_interval = Duration::from_millis(20);
     let mut client = Client::connect(client_config).unwrap();
-    assert!(matches!(
-        client.set_volume(19),
-        Err(Error::VerificationTimeout {
-            field: "volume",
-            expected,
-            actual,
-            attempts,
-            ..
-        }) if expected == "19" && actual == "18" && attempts >= 2
-    ));
+    let error = client.set_volume(19).unwrap_err();
+    assert!(
+        matches!(
+            &error,
+            Error::VerificationTimeout {
+                field: "volume",
+                expected,
+                actual,
+                attempts,
+                ..
+            } if expected == "19" && actual == "18" && *attempts >= 2
+        ),
+        "unexpected error: {error:?}"
+    );
     drop(client);
     server.join().unwrap();
 }

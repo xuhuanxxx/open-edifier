@@ -25,6 +25,9 @@ jobs:
         with:
           ref: ${{ env.RELEASE_TAG }}
       - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
       - name: Validate tag and release notes
         shell: bash
         run: |
@@ -41,6 +44,8 @@ jobs:
           cargo test --workspace --all-targets --locked
           RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked
           cargo package --workspace --allow-dirty --no-verify
+          PYTHONPATH=bindings/python/src python -m unittest discover -s bindings/python/tests
+          python -m pip wheel --no-deps --wheel-dir "$RUNNER_TEMP/open-edifier-wheel" bindings/python
       - name: Build macOS release
         run: apps/macos/package.sh
         env:

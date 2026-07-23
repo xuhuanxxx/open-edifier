@@ -40,6 +40,28 @@ jobs:
       - uses: dtolnay/rust-toolchain@1.85
       - run: cargo check --workspace --all-targets --locked
 
+  python-client:
+    name: python-client (${{ matrix.python-version }})
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.14"]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Test Python client
+        env:
+          PYTHONPATH: bindings/python/src
+        run: python -m unittest discover -s bindings/python/tests
+      - name: Build pure Python wheel
+        run: >-
+          python -m pip wheel --no-deps
+          --wheel-dir "${{ runner.temp }}/open-edifier-wheel"
+          bindings/python
+
   macos-app:
     runs-on: macos-latest
     steps:

@@ -6,12 +6,13 @@
 
 产品只有一个：**OpenEdifier 开源项目本身**。
 
-Rust workspace、CLI、macOS App、文档、测试和研究记录共同组成这个项目。它们在代码架构中承担不同职责，但不是产品化阶段需要分别经营和发布的多个产品：
+Rust workspace、Python 客户端、CLI、macOS App、文档、测试和研究记录共同组成这个项目。它们在代码架构中承担不同职责，但不是产品化阶段需要分别经营和发布的多个产品：
 
-- Rust SDK 是仓库内部的共享能力层，不单独发布到 crates.io；
+- Rust SDK 是仓库内部原生产品的共享能力层，不单独发布到 crates.io；
+- 纯 Python 异步客户端面向自动化和 Home Assistant，不依赖 Rust 构建产物；
 - CLI 是项目提供的一种使用入口，Homebrew 是它的安装方式；
 - macOS App 是项目提供的一种图形入口，GitHub Release 中的 DMG 是它的分发方式；
-- iOS、公开语言绑定和 Home Assistant 是项目路线图，不是当前已经交付的能力。
+- iOS、Python 包的 PyPI 发布和 Home Assistant integration 是项目路线图，不是当前已经交付的能力。
 
 产品化的目标是让一个不了解仓库历史的人来到公开 GitHub 后，能够：
 
@@ -50,6 +51,7 @@ Rust workspace、CLI、macOS App、文档、测试和研究记录共同组成这
 | 敏感信息与历史审计 | 已通过公开门 | 转 public 前已检查完整 Git 历史中的路径、地址、凭据特征、专有扩展名和大 blob，ignored 内容只有构建产物；后续 release 继续检查增量 |
 | 最小公开文件 | 已完成 | README、LICENSE、CONTRIBUTING、SECURITY、CHANGELOG 和 `.gitignore` 已存在 |
 | Rust CI | 已完成并通过 | Linux、macOS、Windows 测试，fmt、clippy、doc 和 Rust 1.85 MSRV 已在 GitHub Actions 通过 |
+| Python 客户端 | 已完成源码包 | 原生 `asyncio`、零运行时依赖，覆盖状态、修改、播放和事件 mock；wheel 可构建，尚未发布 PyPI |
 | CLI 版本 | 已完成 | `edifier --version` 从 Cargo package version 输出完整版本 |
 | macOS 发布工程 | 已完成并通过 | 版本注入、原创图标、ad-hoc 签名、DMG 和 checksum 已落地，本地与 GitHub Actions 构建均通过 |
 | tag 到 GitHub prerelease | 已完成 | `v0.1.0-alpha.1` 固定到通过 CI 的 commit；候选和人工发布 workflow 均通过，远端 DMG/checksum 已匿名下载并回读验证 |
@@ -62,7 +64,7 @@ Rust workspace、CLI、macOS App、文档、测试和研究记录共同组成这
 ## 产品化原则
 
 1. 产品化对象始终是整个公开仓库，不把内部 crate 或应用入口虚构成独立发布目标。
-2. Rust SDK 继续作为唯一共享能力层，CLI 和应用不得复制 wire protocol。
+2. Rust SDK 是原生产品的共享能力层；纯 Python 客户端只为自动化和 Home Assistant 独立实现已验证协议，语义变化必须同步测试和文档。
 3. 冻结 `v0.1` 设备能力，公开准备不顺带增加命令、新型号或推测性抽象。
 4. 保持同步 Rust 核心，不引入 async runtime、daemon、通用传输框架或插件系统。
 5. 所有发布产物必须来自同一干净 commit 和 tag，并能由公开源码重新构建。
@@ -258,8 +260,9 @@ apps/macos/package.sh
 - Homebrew CLI 安装、测试和卸载通过；
 - macOS DMG、checksum、风险说明和安装验证齐全；
 - Rust、SwiftUI、文档和 S260 实机质量门通过，设备状态已恢复；
+- Python 客户端测试和 wheel 构建通过；
 - 新型号扩展边界有文档，但没有把未验证型号描述成支持；
-- iOS、公开绑定和 Home Assistant 明确标记为路线图。
+- iOS、PyPI 发布和 Home Assistant integration 明确标记为路线图。
 
 ## 延后事项
 
@@ -274,5 +277,7 @@ apps/macos/package.sh
 | 手动 IP UI | 出现可复现的 mDNS 失败 |
 | macOS 实时事件 | 轮询造成可观察的状态错误 |
 | 新型号 | 具备型号、固件、脱敏 fixture、mock 或实机证据 |
-| iOS、公开绑定、Home Assistant | 有明确使用需求并进入实际开发 |
+| iOS | 有明确使用需求并进入实际开发 |
+| PyPI 发布 | Home Assistant integration 开始消费稳定的 Python API |
+| Home Assistant integration | Python 客户端经实机验证并确定实体模型 |
 | daemon、账号、云服务、遥测 | 当前不规划 |

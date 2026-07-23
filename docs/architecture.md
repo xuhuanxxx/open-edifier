@@ -1,28 +1,29 @@
 # 架构设计
 
-OpenEdifier 是面向多型号的开源 monorepo。项目整体是产品；Rust SDK 是仓库内唯一共享能力层，CLI、iOS、macOS 和 Home Assistant 是相互平行的使用入口或集成。
+OpenEdifier 是面向多型号的开源 monorepo。项目整体是产品；Rust SDK 是原生产品的共享能力层，纯 Python 客户端是面向 Home Assistant 安装与异步运行时的独立实现。CLI、iOS、macOS 和 Home Assistant 是相互平行的使用入口或集成。
 
 ```text
-CLI -----------------------------> Rust SDK --\
-macOS -> C ABI bridge -----------> Rust SDK ---+-> 驱动选择 -> 型号驱动 -> 音箱
-iOS -> Swift binding（规划）-----> Rust SDK ---+
-Home Assistant -> Python binding -> Rust SDK --/
+CLI --------------------------> Rust SDK --\
+macOS -> C ABI bridge --------> Rust SDK ---+-> Rust 型号驱动 -----> 音箱
+iOS -> Swift binding（规划）--> Rust SDK --/
+Home Assistant（规划）--------> async Python client -> Python S260 驱动 -> 音箱
 ```
 
 ## 项目边界
 
-- SDK 提供发现、状态、命令、事件和结构化错误，是唯一共享控制能力。
+- Rust SDK 提供原生端的发现、状态、命令、事件和结构化错误。
+- 纯 Python 客户端直接提供异步状态、命令和事件，不调用 CLI、动态库或 Rust 构建产物；Home Assistant 发现由平台 Zeroconf 提供。
 - CLI 直接调用 Rust SDK，是终端用户和本地 Agent 的主要自动化入口。
 - macOS 应用通过最小 C ABI bridge 静态链接 SDK，不要求 CLI 或任何 daemon 运行。
 - iOS 计划通过 Swift binding 直接调用 SDK。
-- Home Assistant 通过 Python binding 或专用 integration 调用 SDK。
-- 任一使用入口未安装、未启动或发生故障，都不能阻断其他入口使用共享能力层。
+- Home Assistant 计划通过专用 integration 调用纯 Python 客户端。
+- 任一使用入口未安装、未启动或发生故障，都不能阻断其他入口。
 
 公共纯前端 WebUI 不属于当前产品架构。浏览器无法直接访问 S260 的原始 TCP/mDNS 控制面，Rust/Wasm 也不会绕过浏览器沙箱；该方向的论证已移入 [归档](archive/webui-plan.md)。
 
 ## 驱动层
 
-经过验证的 S260 驱动在 TCP `8080` 端口使用两条独立传输路径：framed JSON 用于完整状态和带确认的设置，`BB EC` 二进制通道用于低延迟状态事件。所有使用入口通过与型号无关的状态和事件类型使用两者，不直接解析任何 wire format。
+经过验证的 S260 驱动在 TCP `8080` 端口使用两条独立传输路径：framed JSON 用于完整状态和带确认的设置，`BB EC` 二进制通道用于低延迟状态事件。Rust 应用不直接解析 wire format；纯 Python 客户端独立实现同一已记录边界。
 
 `open-edifier-core` 只拥有稳定、与型号无关的类型和同步 `Device` 契约。型号与输入源标识使用字符串承载，使驱动能够增加能力，而无需修改中央 enum。
 
@@ -32,9 +33,9 @@ Home Assistant -> Python binding -> Rust SDK --/
 
 每个 Rust 驱动负责一个协议族的分帧、型号特定校验、控制端点和设备命令。`open-edifier` facade 负责选择驱动；应用层负责 UI、生命周期、局域网权限和平台集成。
 
-语言绑定必须保留各驱动的状态和错误语义。应用不应复制 wire protocol。
+Swift binding 必须保留 Rust 驱动的状态和错误语义。Python 客户端保持零运行时依赖和原生 `asyncio`，并通过对应 mock 测试与 Rust 实现对齐；协议语义变化必须同时更新两端和协议文档。
 
-S260 wire response 会解析为私有 Serde 传输类型。公开状态只包含应用需要的稳定字段，不保留可能携带局域网或已配对设备信息的完整厂商响应。设备拒绝也只投影结果 code 和经过限制的 message，不把完整响应放入错误。
+S260 wire response 在 Rust 中解析为私有 Serde 传输类型，在 Python 中通过私有严格解析函数验证。公开状态只包含应用需要的稳定字段，不保留可能携带局域网或已配对设备信息的完整厂商响应。设备拒绝也只投影结果 code 和经过限制的 message，不把完整响应放入错误。
 
 输入源、音量和 EQ 在 ACK 后共用有截止时间的验证循环，允许设备状态短暂延迟；播放命令仍只保证 ACK。事件读取由调用方提供最大等待时间，驱动在该预算内承担 socket read、退避和重连，不要求调用方忙等。
 

@@ -236,10 +236,10 @@ impl Client {
                 Err(error) => return Err(error.into()),
             }
         }
-        Err(Error::Protocol(format!(
-            "speaker did not answer request {request_id} within {:?}",
-            timeout
-        )))
+        Err(Error::RequestTimeout {
+            request_id,
+            timeout,
+        })
     }
 
     fn status_wire(&mut self) -> Result<S260Status> {
@@ -281,8 +281,25 @@ impl Client {
                 });
             }
             attempts = attempts.saturating_add(1);
-            let status =
-                self.status_wire_with_timeout(remaining.min(self.config.request_timeout))?;
+            let status = match self
+                .status_wire_with_timeout(remaining.min(self.config.request_timeout))
+            {
+                Ok(status) => status,
+                Err(Error::RequestTimeout { .. }) => {
+                    let Some(remaining) = deadline.checked_duration_since(Instant::now()) else {
+                        return Err(Error::VerificationTimeout {
+                            field,
+                            expected,
+                            actual: last_actual,
+                            attempts,
+                            elapsed_ms: elapsed_millis(started),
+                        });
+                    };
+                    thread::sleep(remaining.min(self.config.verification_interval));
+                    continue;
+                }
+                Err(error) => return Err(error),
+            };
             if matches(&status) {
                 return Ok(status);
             }

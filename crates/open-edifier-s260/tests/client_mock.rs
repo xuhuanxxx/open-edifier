@@ -194,7 +194,18 @@ fn volume_verification_has_a_bounded_structured_failure() {
         let mut status_reads = 0_u8;
         loop {
             let mut bytes = [0_u8; 2048];
-            let size = stream.read(&mut bytes).unwrap();
+            let size = match stream.read(&mut bytes) {
+                Ok(size) => size,
+                Err(error)
+                    if matches!(
+                        error.kind(),
+                        std::io::ErrorKind::ConnectionAborted | std::io::ErrorKind::ConnectionReset
+                    ) =>
+                {
+                    break;
+                }
+                Err(error) => panic!("mock server read failed: {error}"),
+            };
             if size == 0 {
                 break;
             }

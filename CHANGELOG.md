@@ -9,6 +9,7 @@
 - framed JSON decoder 可在畸形帧后恢复，拒绝错误不再携带完整设备响应，状态和事件增加字段间校验。
 - Swift bridge 使用结构化错误；macOS 串行执行设备操作，在音量滑块编辑期间暂停轮询并在失败时回滚。
 - 版本提升到 `0.2.0-alpha.1`，不提供旧 Rust API、事件签名或 bridge error JSON 的兼容层。
+- 新增可 pip 构建的纯 Python 异步 S260 客户端，零运行时依赖，提供状态、写后验证、播放、结构化错误和可重连事件流；Home Assistant integration 仍未交付。
 
 ## 0.1.0-alpha.1 - 2026-07-20
 

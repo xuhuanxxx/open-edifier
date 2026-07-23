@@ -2,7 +2,7 @@
 
 为受支持的 EDIFIER 音箱提供非官方、本地优先的控制能力。
 
-OpenEdifier 目前提供 Rust SDK、CLI 和原生 macOS MVP，可在可信局域网内发现并控制 EDIFIER S260。iOS、公开语言绑定和 Home Assistant 支持仍在规划中，不包含在当前 alpha 版本内。
+OpenEdifier 目前提供 Rust SDK、CLI、原生 macOS MVP 和可从源码安装的纯 Python 异步客户端，可在可信局域网内控制 EDIFIER S260。iOS 和 Home Assistant integration 仍在规划中，不包含在当前 alpha 版本内。
 
 ## 已实现功能
 
@@ -72,6 +72,16 @@ edifier --host 192.0.2.10 --model s260 --port 8080 status
 
 `--json` 为脚本和本地 Agent 输出机器可读的发现、状态与事件数据。facade 和产品入口的发现结果只包含当前 build 已支持的型号；低层 discovery crate 仍可用于研究未知候选。错误写入 stderr，并使用非零退出码。
 
+## Python 客户端
+
+面向自动化和 Home Assistant 的纯 Python 客户端不调用 CLI，也不加载 Rust 产物。当前尚未发布到 PyPI，可从源码安装：
+
+```bash
+python3 -m pip install ./bindings/python
+```
+
+它使用原生 `asyncio` 提供状态、修改、播放和实时事件，且没有运行时依赖。发现由上层平台负责；完整 API 和示例见 [Python 客户端说明](bindings/python/README.md)。
+
 ## Monorepo 结构
 
 ```text
@@ -83,7 +93,7 @@ crates/
   open-edifier-s260/       已验证的 S260 协议驱动
   open-edifier-cli/        多型号 CLI
 apps/                      平行的用户端应用；macOS MVP 已交付，iOS 尚在规划
-bindings/                  macOS C ABI bridge 与规划中的公开 Swift/Python 绑定
+bindings/                  macOS C ABI bridge 与纯 Python 异步客户端
 integrations/              规划中的 Home Assistant 集成
 docs/                      架构与协议文档
 research/                  仅存放脱敏后的原始观察
@@ -121,7 +131,7 @@ apps/macos/package.sh
 
 ## 项目边界
 
-产品是 OpenEdifier 这个公开开源项目整体。Rust SDK 是仓库内唯一共享的设备能力层；CLI、macOS、规划中的 iOS 和 Home Assistant 是项目提供的平行使用入口，不依赖另一个入口运行。macOS 应用通过最小 C ABI 静态链接 SDK，不调用 CLI。
+产品是 OpenEdifier 这个公开开源项目整体。Rust SDK 是原生产品的共享设备能力层；纯 Python 客户端为 Home Assistant 的安装和异步运行时独立实现已验证协议。CLI、macOS、Python 客户端、规划中的 iOS 和 Home Assistant 是平行入口，不依赖另一个入口运行。macOS 应用通过最小 C ABI 静态链接 SDK，不调用 CLI。
 
 公共纯前端 WebUI 方向已经归档：普通浏览器不能访问 S260 使用的原始 TCP socket 和 mDNS，而引入本地 companion 又不符合纯前端目标。完整论证保留在 [WebUI 纯前端方案归档](docs/archive/webui-plan.md)。
 
@@ -131,7 +141,7 @@ apps/macos/package.sh
 - 通过项目 Homebrew tap 发布 CLI，稳定后再评估 `homebrew-core`
 - 将 ad-hoc 签名的 macOS App 通过 GitHub Release 分发；Developer ID 和 Apple 公证作为可选升级
 - 支持 App Intents 的原生 iOS 应用
-- Python 绑定与 Home Assistant 集成
+- 将纯 Python 客户端发布到 PyPI，并接入 Home Assistant integration
 - 以脱敏 fixture 或实机验证为依据，支持更多 EDIFIER 型号
 
 ## 致谢

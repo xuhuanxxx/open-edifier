@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "open-edifier"
+version = "0.2.0a1"
+description = "Async local-network client for supported EDIFIER speakers"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "OpenEdifier contributors" }]
+keywords = ["edifier", "speaker", "home-assistant", "local-control"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Framework :: AsyncIO",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://github.com/xuhuanxxx/open-edifier"
+Repository = "https://github.com/xuhuanxxx/open-edifier"
+Issues = "https://github.com/xuhuanxxx/open-edifier/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+open_edifier = ["py.typed"]

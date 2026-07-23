@@ -282,7 +282,23 @@ impl Client {
             }
             attempts = attempts.saturating_add(1);
             let status =
-                self.status_wire_with_timeout(remaining.min(self.config.request_timeout))?;
+                match self.status_wire_with_timeout(remaining.min(self.config.request_timeout)) {
+                    Ok(status) => status,
+                    Err(_)
+                        if deadline
+                            .checked_duration_since(Instant::now())
+                            .is_none_or(|remaining| remaining.is_zero()) =>
+                    {
+                        return Err(Error::VerificationTimeout {
+                            field,
+                            expected,
+                            actual: last_actual,
+                            attempts,
+                            elapsed_ms: elapsed_millis(started),
+                        });
+                    }
+                    Err(error) => return Err(error),
+                };
             if matches(&status) {
                 return Ok(status);
             }

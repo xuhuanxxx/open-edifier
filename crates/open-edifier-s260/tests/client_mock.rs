@@ -191,6 +191,7 @@ fn volume_verification_has_a_bounded_structured_failure() {
     let address = listener.local_addr().unwrap();
     let server = thread::spawn(move || {
         let (mut stream, _) = listener.accept().unwrap();
+        let mut status_reads = 0_u8;
         loop {
             let mut bytes = [0_u8; 2048];
             let size = stream.read(&mut bytes).unwrap();
@@ -202,9 +203,15 @@ fn volume_verification_has_a_bounded_structured_failure() {
             let response = if request["payload"] == "settings" {
                 json!({"code": 0, "id": id, "payload": "settings", "message": "success"})
             } else {
+                status_reads += 1;
+                if status_reads >= 3 {
+                    thread::sleep(Duration::from_millis(150));
+                }
                 status_with_volume(id, 2, 0, 18)
             };
-            stream.write_all(&frame(&response, &[])).unwrap();
+            if stream.write_all(&frame(&response, &[])).is_err() {
+                break;
+            }
         }
     });
 

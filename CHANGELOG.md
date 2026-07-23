@@ -2,7 +2,7 @@
 
 ## 0.2.0-alpha.1 - 尚未发布
 
-- 不兼容地拆分 S260 连接、请求和写后验证超时，并为输入源、音量和 EQ 共用有截止时间的验证循环。
+- 不兼容地拆分并结构化 S260 连接、请求和写后验证超时，并为输入源、音量和 EQ 共用有截止时间的验证循环。
 - `Client` 直接返回公共 `DeviceStatus`；S260 内部状态和 framed JSON decoder 不再公开。
 - `DeviceEvents::next_event` 增加调用方等待预算，修复断线退避期间的 CLI 忙等并保留重连错误。
 - facade 发现只返回当前 build 支持的设备；低层 `discover_candidates` 保留未知候选，型号映射不再信任可修改名称。

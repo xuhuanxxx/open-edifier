@@ -1,4 +1,4 @@
-use std::io;
+use std::{io, time::Duration};
 
 /// Failures reported by the S260 protocol driver.
 #[derive(Debug, thiserror::Error)]
@@ -12,6 +12,14 @@ pub enum Error {
     /// Malformed or unexpected protocol data.
     #[error("invalid protocol frame: {0}")]
     Protocol(String),
+    /// The speaker did not answer a request before its deadline.
+    #[error("speaker did not answer request {request_id} within {timeout:?}")]
+    RequestTimeout {
+        /// Identifier of the unanswered request.
+        request_id: String,
+        /// Request deadline used by the caller.
+        timeout: Duration,
+    },
     /// Explicit command rejection from the speaker.
     #[error("speaker rejected command with code {code}: {message}")]
     Rejected {
@@ -84,6 +92,13 @@ impl From<Error> for open_edifier_core::Error {
                 message: error.to_string(),
             },
             Error::Protocol(message) => CoreError::Protocol { message },
+            Error::RequestTimeout {
+                request_id,
+                timeout,
+            } => CoreError::Network {
+                operation: "S260 request",
+                message: format!("speaker did not answer request {request_id} within {timeout:?}"),
+            },
             Error::Rejected { code, message } => CoreError::Rejected { code, message },
             Error::MissingField(field) => CoreError::Protocol {
                 message: format!("missing field {field}"),

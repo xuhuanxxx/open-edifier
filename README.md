@@ -101,7 +101,7 @@ research/                  仅存放脱敏后的原始观察
 
 ## macOS 应用
 
-Apple Silicon 用户可以从 [OpenEdifier 0.1.0-alpha.1 prerelease](https://github.com/xuhuanxxx/open-edifier/releases/tag/v0.1.0-alpha.1) 下载 DMG 和 `.sha256`。校验后将 App 拖入 `/Applications`；该 App 使用 ad-hoc 签名，首次打开方式和风险说明见 [macOS 应用说明](apps/macos/README.md)。
+当前已发布的 DMG 是较早的 [OpenEdifier 0.1.0-alpha.1 prerelease](https://github.com/xuhuanxxx/open-edifier/releases/tag/v0.1.0-alpha.1)。`0.2.0-alpha.1` 的运行时修复（写后验证、事件重连、串行控制等）尚未随正式发布分发，只能从源码构建。下载后校验 `.sha256` 并将 App 拖入 `/Applications`；该 App 使用 ad-hoc 签名，首次打开方式和风险说明见 [macOS 应用说明](apps/macos/README.md)。
 
 从源码构建需要 macOS 26 和 Xcode 26：
 

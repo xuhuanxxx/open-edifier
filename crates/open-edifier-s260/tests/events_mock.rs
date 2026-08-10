@@ -59,6 +59,29 @@ fn event_stream_reconnects_after_the_speaker_closes_the_socket() {
 }
 
 #[test]
+fn a_bad_event_frame_does_not_drop_following_valid_frames() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = listener.local_addr().unwrap();
+    let server = thread::spawn(move || {
+        let (mut stream, _) = listener.accept().unwrap();
+        let mut bytes = response(0x0066, &[30, 31]);
+        bytes.extend(response(0x0066, &[30, 18]));
+        stream.write_all(&bytes).unwrap();
+    });
+
+    let mut events = EventStream::connect(config(address)).unwrap();
+    assert!(events.next_event(Duration::from_secs(2)).is_err());
+    assert_eq!(
+        events.next_event(Duration::from_millis(100)).unwrap(),
+        Some(DeviceEvent::Volume {
+            current: 18,
+            max: 30,
+        })
+    );
+    server.join().unwrap();
+}
+
+#[test]
 fn reconnect_backoff_waits_instead_of_busy_looping() {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let address = listener.local_addr().unwrap();

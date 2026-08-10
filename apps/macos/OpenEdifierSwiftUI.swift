@@ -232,11 +232,6 @@ private final class SpeakerStore: ObservableObject {
         perform { try RustBridge.status(device) }
     }
 
-    func refresh() {
-        guard let device = selectedDevice() else { return }
-        perform { try RustBridge.status(device) }
-    }
-
     func selectSource(_ source: String) {
         guard let device = selectedDevice() else { return }
         perform { try RustBridge.source(source, device: device) }

@@ -7,8 +7,9 @@ import itertools
 import math
 import time
 from collections import deque
+from collections.abc import AsyncIterator, Callable
 from contextlib import suppress
-from typing import Any, AsyncIterator, Callable
+from typing import Any, Self
 
 from .errors import (
     InvalidEqualizerPresetError,
@@ -67,7 +68,7 @@ class S260Client:
         self._decoder = JsonFrameDecoder()
         self._lock = asyncio.Lock()
 
-    async def __aenter__(self) -> S260Client:
+    async def __aenter__(self) -> Self:
         await self.connect()
         return self
 
@@ -77,18 +78,21 @@ class S260Client:
     async def connect(self) -> None:
         """Open the control connection within the configured timeout."""
         async with self._lock:
-            if self._writer is not None:
-                return
-            try:
-                async with asyncio.timeout(self.connect_timeout):
-                    self._reader, self._writer = await asyncio.open_connection(
-                        self.host, self.port
-                    )
-            except TimeoutError as error:
-                raise RequestTimeoutError("connect", self.connect_timeout) from error
-            except OSError as error:
-                raise NetworkError("connect", str(error)) from error
-            self._decoder = JsonFrameDecoder()
+            if self._writer is None:
+                await self._open_locked()
+
+    async def _open_locked(self) -> None:
+        """Open the control connection while the serialization lock is held."""
+        try:
+            async with asyncio.timeout(self.connect_timeout):
+                self._reader, self._writer = await asyncio.open_connection(
+                    self.host, self.port
+                )
+        except TimeoutError as error:
+            raise RequestTimeoutError("connect", self.connect_timeout) from error
+        except OSError as error:
+            raise NetworkError("connect", str(error)) from error
+        self._decoder = JsonFrameDecoder()
 
     async def close(self) -> None:
         """Close the control connection."""
@@ -254,7 +258,11 @@ class S260Client:
             except RequestTimeoutError:
                 if loop.time() >= deadline:
                     break
-                raise
+                await self._open_locked()
+                remaining = deadline - loop.time()
+                if remaining > 0:
+                    await asyncio.sleep(min(remaining, self.verification_interval))
+                continue
             if matches(status):
                 return status
             last_actual = actual(status)
@@ -303,7 +311,7 @@ class S260EventStream(AsyncIterator[DeviceEvent]):
         self._reconnect_delay = 0.2
         self._read_lock = asyncio.Lock()
 
-    async def __aenter__(self) -> S260EventStream:
+    async def __aenter__(self) -> Self:
         await self.connect()
         return self
 
@@ -353,10 +361,17 @@ class S260EventStream(AsyncIterator[DeviceEvent]):
                 if not chunk:
                     await self._drop_connection()
                     continue
+                decode_error: ProtocolError | None = None
                 for command, payload in self._decoder.feed(chunk):
-                    event = decode_event(command, payload)
+                    try:
+                        event = decode_event(command, payload)
+                    except ProtocolError as error:
+                        decode_error = decode_error or error
+                        continue
                     if event is not None:
                         self._pending.append(event)
+                if decode_error is not None:
+                    raise decode_error
             raise NotConnectedError()
 
     async def _open(self) -> None:

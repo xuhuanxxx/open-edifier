@@ -44,6 +44,12 @@ jobs:
           cargo test --workspace --all-targets --locked
           RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked
           cargo package --workspace --allow-dirty --no-verify
+          python -m pip install ruff mypy
+          cd bindings/python
+          ruff check src tests
+          ruff format --check src tests
+          mypy --strict src
+          cd ../..
           PYTHONPATH=bindings/python/src python -m unittest discover -s bindings/python/tests
           python -m pip wheel --no-deps --wheel-dir "$RUNNER_TEMP/open-edifier-wheel" bindings/python
       - name: Build macOS release

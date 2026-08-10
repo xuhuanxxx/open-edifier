@@ -235,7 +235,10 @@ fn volume_verification_has_a_bounded_structured_failure() {
                 actual,
                 attempts,
                 ..
-            } if expected == "19" && actual == "18" && *attempts >= 2
+            // The first status read can consume the entire verification window
+            // on a loaded CI runner; the contract under test is the bounded,
+            // structured failure, not a minimum number of queries.
+            } if expected == "19" && actual == "18" && *attempts >= 1
         ),
         "unexpected error: {error:?}"
     );

@@ -119,11 +119,20 @@ impl EventStream {
                     self.schedule_reconnect("speaker closed the connection".into());
                 }
                 Ok(size) => {
+                    let mut decode_error = None;
                     for frame in self.decoder.feed(&buffer[..size]) {
                         if frame.is_heartbeat() {
                             continue;
                         }
-                        self.pending.push_back(decode_event(frame)?);
+                        match decode_event(frame) {
+                            Ok(event) => self.pending.push_back(event),
+                            Err(error) => {
+                                decode_error.get_or_insert(error);
+                            }
+                        }
+                    }
+                    if let Some(error) = decode_error {
+                        return Err(error);
                     }
                 }
                 Err(error)

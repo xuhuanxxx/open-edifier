@@ -10,6 +10,9 @@
 - Swift bridge 使用结构化错误；macOS 串行执行设备操作，在音量滑块编辑期间暂停轮询并在失败时回滚。
 - 版本提升到 `0.2.0-alpha.1`，不提供旧 Rust API、事件签名或 bridge error JSON 的兼容层。
 - 新增可 pip 构建的纯 Python 异步 S260 客户端，零运行时依赖，提供状态、写后验证、播放、结构化错误和可重连事件流；Home Assistant integration 仍未交付。
+- 事件流在单个数据块内遇到非法事件帧时保留其余有效事件，不再静默丢弃。
+- Python 客户端验证循环与 Rust 对齐：验证期间请求超时后重连，并在验证窗口内继续重试。
+- Python 客户端补充 Ruff 与 Mypy strict 门禁并接入 CI。
 
 ## 0.1.0-alpha.1 - 2026-07-20
 

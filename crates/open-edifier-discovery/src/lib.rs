@@ -18,7 +18,9 @@ const S260_DRIVER_MODEL: &str = "s260";
 pub fn discover_candidates(timeout: Duration) -> Result<Vec<DiscoveredDevice>> {
     let daemon = ServiceDaemon::new().map_err(discovery_error)?;
     let receiver = daemon.browse(AIRPLAY_SERVICE).map_err(discovery_error)?;
-    let deadline = Instant::now() + timeout;
+    let Some(deadline) = Instant::now().checked_add(timeout) else {
+        return Err(Error::Discovery("discovery timeout is too large".into()));
+    };
     let mut devices = Vec::new();
     let mut seen = HashSet::new();
 
